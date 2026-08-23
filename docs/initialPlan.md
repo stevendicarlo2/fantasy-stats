@@ -129,13 +129,7 @@ Use:
 
 Do not introduce an ORM or query builder initially. The schema is expected to be small enough that plain SQL is clearer.
 
-Store fantasy scores as integer hundredths of a point rather than floating-point values. For example:
-
-```text
-123.45 points -> 12345
-```
-
-This preserves exact comparisons for NP ties and exact additive score adjustments.
+Store fantasy scores and score adjustments as floating-point values. Scores use two decimal places, and tie comparisons should use that league scoring precision.
 
 The exact table layout is deliberately deferred until implementation. The schema must nevertheless preserve the separation and behavior described below.
 
@@ -163,7 +157,7 @@ Manual data remains separate from imported data. Do not modify imported ESPN row
 The only initial manual override concept is a typed `matchup_override` record that:
 
 - Targets a franchise's score in a specific matchup
-- Stores an additive score adjustment in integer hundredths
+- Stores a floating-point additive score adjustment
 - Requires a human-readable reason
 
 Effective scores are:
