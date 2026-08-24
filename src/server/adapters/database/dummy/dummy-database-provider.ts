@@ -106,6 +106,14 @@ export class DummyDatabaseProvider implements DatabaseProvider {
     return copy(failedImport);
   }
 
+  async listImportRuns(limit = 20): Promise<ImportRun[]> {
+    return copy(
+      [...this.importRuns.values()]
+        .sort((left, right) => right.startedAt.localeCompare(left.startedAt))
+        .slice(0, limit),
+    );
+  }
+
   async getSeasonImportSnapshot(
     seasonYear: number,
   ): Promise<SeasonImportSnapshot | null> {

@@ -215,6 +215,12 @@ describe("libSQL database provider", () => {
       status: "failed",
       errorMessage: "Synthetic upstream failure",
     });
+    await expect(provider.listImportRuns()).resolves.toEqual([
+      expect.objectContaining({
+        id: ids.failedRun,
+        status: "failed",
+      }),
+    ]);
   });
 
   it("rolls back a season import when persistence fails", async () => {

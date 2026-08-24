@@ -53,6 +53,7 @@ export interface DatabaseProvider {
   startImportRun(input: StartImportRunInput): Promise<ImportRun>;
   commitSeasonImport(input: CommitSeasonImportInput): Promise<ImportRun>;
   failImportRun(input: FailImportRunInput): Promise<ImportRun>;
+  listImportRuns(limit?: number): Promise<ImportRun[]>;
 
   getSeasonImportSnapshot(
     seasonYear: number,

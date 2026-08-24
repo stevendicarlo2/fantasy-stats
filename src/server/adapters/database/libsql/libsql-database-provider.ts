@@ -805,6 +805,34 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
     });
   }
 
+  async listImportRuns(limit = 20): Promise<ImportRun[]> {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw new LibSqlDatabaseError(
+        "Import run list limit must be between 1 and 100",
+      );
+    }
+
+    const result = await this.client.execute({
+      sql: `
+        SELECT
+          id,
+          provider,
+          operation,
+          season_year AS seasonYear,
+          status,
+          started_at AS startedAt,
+          completed_at AS completedAt,
+          error_message AS errorMessage
+        FROM import_runs
+        ORDER BY started_at DESC
+        LIMIT ?
+      `,
+      args: [limit],
+    });
+
+    return result.rows.map((row) => importRunSchema.parse(row));
+  }
+
   getSeasonImportSnapshot(
     seasonYear: number,
   ): Promise<SeasonImportSnapshot | null> {

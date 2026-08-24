@@ -17,6 +17,10 @@ Selection precedence is:
 2. `FANTASY_STATS_STORAGE` in `.env.local`
 3. `dummy`
 
+The web application does not accept dummy storage because its state would be
+lost between requests. Set `FANTASY_STATS_STORAGE=local` or
+`FANTASY_STATS_STORAGE=turso` before starting the development server.
+
 ## Dummy storage
 
 ```bash
@@ -50,6 +54,18 @@ npm run import-season --year=2017 --storage=local \
 Local mode persists migrations, canonical data, audits, overrides, and scoring
 views. It is suitable for development and local inspection but is not the
 cross-computer source of truth.
+
+For the web dashboard, add the following to `.env.local` and restart the
+development server:
+
+```text
+FANTASY_STATS_STORAGE=local
+FANTASY_STATS_LOCAL_DATABASE_FILE=.data/fantasy-stats.db
+```
+
+The database-file setting is optional and defaults to the path shown above.
+The dashboard applies migrations during server initialization, lists imported
+seasons and recent import runs, and provides import and refresh actions.
 
 ## Turso storage
 

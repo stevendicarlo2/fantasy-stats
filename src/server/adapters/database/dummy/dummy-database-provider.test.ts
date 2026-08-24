@@ -85,6 +85,12 @@ describe("DummyDatabaseProvider", () => {
     await expect(provider.listSourceMappings("espn")).resolves.toHaveLength(
       1,
     );
+    await expect(provider.listImportRuns()).resolves.toEqual([
+      expect.objectContaining({
+        id: ids.importRun,
+        status: "succeeded",
+      }),
+    ]);
   });
 
   it("supports typed matchup overrides", async () => {

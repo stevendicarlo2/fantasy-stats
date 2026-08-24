@@ -49,6 +49,9 @@ const databaseProviderContract = {
       errorMessage: input.errorMessage,
     };
   },
+  async listImportRuns() {
+    return [];
+  },
   async getSeasonImportSnapshot() {
     return null;
   },

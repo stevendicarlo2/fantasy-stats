@@ -13,43 +13,246 @@
 
 body {
   margin: 0;
-}
-
-.shell {
-  display: grid;
-  min-height: 100vh;
-  place-items: center;
-  padding: 2rem;
   background:
-    radial-gradient(circle at top left, rgb(50 145 102 / 30%), transparent 38rem),
+    radial-gradient(circle at top left, rgb(50 145 102 / 28%), transparent 40rem),
     #07130f;
 }
 
-.hero {
-  width: min(48rem, 100%);
+button,
+select {
+  font: inherit;
 }
 
-.eyebrow {
+.shell {
+  width: min(76rem, 100%);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: clamp(2rem, 5vw, 5rem);
+}
+
+.hero {
+  display: grid;
+  min-height: calc(100vh - 10rem);
+  align-content: center;
+}
+
+.hero.compact {
+  grid-template-columns: 1fr auto;
+  min-height: auto;
+  align-items: end;
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.eyebrow,
+.panel-kicker {
   margin: 0 0 1rem;
   color: #72d9a5;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
+h1,
+h2 {
+  letter-spacing: -0.045em;
+}
+
 h1 {
-  max-width: 12ch;
+  max-width: 13ch;
   margin: 0;
   font-size: clamp(2.75rem, 8vw, 5.5rem);
-  letter-spacing: -0.06em;
   line-height: 0.95;
 }
 
-.summary {
-  max-width: 42rem;
-  margin: 2rem 0 0;
+h2 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+p {
   color: #b9c8c0;
+  line-height: 1.65;
+}
+
+.summary {
+  max-width: 44rem;
+  margin: 1.5rem 0 0;
   font-size: clamp(1rem, 2vw, 1.2rem);
-  line-height: 1.7;
+}
+
+.storage-badge {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 8rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid #315245;
+  border-radius: 1rem;
+  background: rgb(12 32 24 / 78%);
+}
+
+.storage-badge span {
+  color: #91a99e;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.storage-badge strong {
+  color: #72d9a5;
+  text-transform: capitalize;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 1.5rem;
+}
+
+.panel,
+.setup-card {
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  border: 1px solid #27483a;
+  border-radius: 1.25rem;
+  background: rgb(9 27 20 / 82%);
+  box-shadow: 0 1.5rem 5rem rgb(0 0 0 / 18%);
+}
+
+.audit-panel {
+  margin-top: 1.5rem;
+}
+
+.import-form {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.import-form label {
+  color: #dce7e1;
+  font-weight: 650;
+}
+
+select {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 1px solid #426657;
+  border-radius: 0.7rem;
+  background: #0b2118;
+  color: #f4f7f5;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+button {
+  padding: 0.85rem 1.1rem;
+  border: 1px solid #72d9a5;
+  border-radius: 0.7rem;
+  background: #72d9a5;
+  color: #07130f;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: transparent;
+  color: #baf1d3;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.action-message {
+  margin: 0.5rem 0 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.65rem;
+}
+
+.action-message.success {
+  background: rgb(45 125 86 / 25%);
+  color: #9aebbe;
+}
+
+.action-message.error {
+  background: rgb(151 58 58 / 25%);
+  color: #ffb2b2;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.8rem 0.65rem;
+  border-bottom: 1px solid #203e32;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: #8eaa9d;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+td {
+  color: #d8e3dd;
+}
+
+.status {
+  display: inline-flex;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.status.succeeded {
+  background: rgb(45 125 86 / 30%);
+  color: #9aebbe;
+}
+
+.status.failed {
+  background: rgb(151 58 58 / 30%);
+  color: #ffb2b2;
+}
+
+.status.running {
+  background: rgb(170 132 47 / 30%);
+  color: #f2d18c;
+}
+
+.setup-card {
+  max-width: 40rem;
+  margin-top: 2rem;
+}
+
+code {
+  color: #9aebbe;
+}
+
+@media (max-width: 800px) {
+  .hero.compact,
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .storage-badge {
+    width: fit-content;
+  }
 }

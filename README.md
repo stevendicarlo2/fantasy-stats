@@ -28,3 +28,12 @@ npm run refresh-season --year=2017
 Imports use nonpersistent dummy storage by default, allowing ESPN ingestion to
 be tested without Turso. Select persistent local or Turso storage explicitly;
 see [storage providers](docs/storage.md).
+
+To use the web import dashboard, configure persistent storage in `.env.local`:
+
+```text
+FANTASY_STATS_STORAGE=local
+```
+
+Then run `npm run dev`. The dashboard lists imported seasons and audit history,
+and can import or refresh completed seasons.
