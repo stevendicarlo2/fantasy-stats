@@ -93,6 +93,12 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
             {stats.regularSeasonStartWeek}-{stats.regularSeasonEndWeek}
           </p>
         </div>
+        <Link
+          className="page-action"
+          href={`/seasons/${stats.year}/adjustments`}
+        >
+          Manage score adjustments
+        </Link>
       </header>
 
       <section className="panel">

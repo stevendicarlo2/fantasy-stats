@@ -37,4 +37,6 @@ FANTASY_STATS_STORAGE=local
 
 Then run `npm run dev`. The dashboard lists imported seasons and audit history,
 and can import or refresh completed seasons. Select an imported season to view
-its regular-season ANP standings and week-by-week scoring details.
+its regular-season ANP standings and week-by-week scoring details. Manual
+additive corrections are managed from the season page; see
+[matchup score adjustments](docs/matchup-adjustments.md).

@@ -1,5 +1,6 @@
 import { SafeOperationalError } from "@/application/errors";
 import { ImportDashboardService } from "@/application/services/import-dashboard-service";
+import { MatchupAdjustmentService } from "@/application/services/matchup-adjustment-service";
 import { SeasonImportService } from "@/application/services/season-import-service";
 import { SeasonStatsService } from "@/application/services/season-stats-service";
 import { EspnFantasySource } from "@/server/adapters/fantasy/espn/espn-source";
@@ -22,6 +23,7 @@ export interface WebRuntime {
   importService: SeasonImportService;
   dashboardService: ImportDashboardService;
   seasonStatsService: SeasonStatsService;
+  matchupAdjustmentService: MatchupAdjustmentService;
 }
 
 export class WebStorageConfigurationError extends SafeOperationalError {
@@ -95,5 +97,8 @@ export async function createWebRuntime(
     }),
     dashboardService: new ImportDashboardService(storage.database),
     seasonStatsService: new SeasonStatsService(storage.database),
+    matchupAdjustmentService: new MatchupAdjustmentService({
+      database: storage.database,
+    }),
   };
 }
