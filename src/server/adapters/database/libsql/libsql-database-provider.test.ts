@@ -140,6 +140,8 @@ describe("libSQL database provider", () => {
       appliedMigrations: [
         "0001_initial_schema.sql",
         "0002_scoring_views.sql",
+        "0003_support_postseason_byes.sql",
+        "0004_scoring_views_with_byes.sql",
       ],
     });
     await expect(provider.runMigrations()).resolves.toEqual({

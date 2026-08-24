@@ -19,6 +19,8 @@ const databaseEnvironmentSchema = z.object({
 });
 
 const espnEnvironmentSchema = z.object({
+  ESPN_LEAGUE_ID: z.coerce.number().int().positive(),
+  ESPN_EARLIEST_SEASON: z.coerce.number().int().min(1900).max(2100),
   ESPN_S2: requiredSecret,
   ESPN_SWID: requiredSecret,
 });

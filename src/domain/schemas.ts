@@ -61,12 +61,22 @@ export const matchupSchema: z.ZodType<Matchup> = z
     week: weekSchema,
     phase: z.enum(["regular", "playoff", "consolation"]),
     homeFranchiseId: canonicalIdSchema,
-    awayFranchiseId: canonicalIdSchema,
+    awayFranchiseId: canonicalIdSchema.nullable(),
   })
   .refine(
-    (matchup) => matchup.homeFranchiseId !== matchup.awayFranchiseId,
+    (matchup) =>
+      matchup.awayFranchiseId === null ||
+      matchup.homeFranchiseId !== matchup.awayFranchiseId,
     {
       message: "must contain two different franchises",
+      path: ["awayFranchiseId"],
+    },
+  )
+  .refine(
+    (matchup) =>
+      matchup.phase !== "regular" || matchup.awayFranchiseId !== null,
+    {
+      message: "regular-season matchups must have an opponent",
       path: ["awayFranchiseId"],
     },
   );
@@ -260,7 +270,7 @@ export const seasonImportSnapshotSchema: z.ZodType<SeasonImportSnapshot> =
           ["homeFranchiseId", matchup.homeFranchiseId],
           ["awayFranchiseId", matchup.awayFranchiseId],
         ] as const) {
-          if (!franchiseIds.has(franchiseId)) {
+          if (franchiseId !== null && !franchiseIds.has(franchiseId)) {
             addReferenceIssue(
               context,
               ["matchups", index, field],
@@ -288,6 +298,10 @@ export const seasonImportSnapshotSchema: z.ZodType<SeasonImportSnapshot> =
           matchup.homeFranchiseId,
           matchup.awayFranchiseId,
         ]) {
+          if (franchiseId === null) {
+            continue;
+          }
+
           weekAppearances.set(
             franchiseId,
             (weekAppearances.get(franchiseId) ?? 0) + 1,
@@ -351,6 +365,10 @@ export const seasonImportSnapshotSchema: z.ZodType<SeasonImportSnapshot> =
           matchup.homeFranchiseId,
           matchup.awayFranchiseId,
         ]) {
+          if (franchiseId === null) {
+            continue;
+          }
+
           if (matchupScores?.get(franchiseId) !== 1) {
             addReferenceIssue(
               context,

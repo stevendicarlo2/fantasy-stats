@@ -14,6 +14,12 @@ The **Adjusted NASCAR System** is the custom weekly scoring system used to deter
 
 Only regular-season weeks contribute to cumulative Adjusted NASCAR standings. Playoff and consolation data may still be imported and queried, but must not affect playoff-qualification totals.
 
+Regular-season cumulative ANP determines playoff qualification and seeding.
+ESPN-generated playoff seeds are not authoritative. Actual postseason matchups
+are manually curated in ESPN and are authoritative; opponents must not be
+inferred from seeds because higher seeds may select their opponents. See
+[Playoff Qualification and Matchups](playoffs.md).
+
 ### NASCAR Points (NP)
 
 For a league with `n` teams:

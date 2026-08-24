@@ -24,6 +24,8 @@ file.
 | --- | --- |
 | `TURSO_DATABASE_URL` | Turso/libSQL database URL |
 | `TURSO_AUTH_TOKEN` | Turso authentication token |
+| `ESPN_LEAGUE_ID` | Numeric ESPN fantasy league identifier |
+| `ESPN_EARLIEST_SEASON` | Earliest season available for import |
 | `ESPN_S2` | Private ESPN league authentication cookie |
 | `ESPN_SWID` | Private ESPN account identifier cookie |
 

@@ -34,7 +34,7 @@ export interface Matchup {
   week: number;
   phase: MatchupPhase;
   homeFranchiseId: CanonicalId;
-  awayFranchiseId: CanonicalId;
+  awayFranchiseId: CanonicalId | null;
 }
 
 export interface ImportedMatchupScore {

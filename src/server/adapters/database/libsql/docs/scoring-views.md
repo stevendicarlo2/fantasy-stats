@@ -33,6 +33,9 @@ Adds the head-to-head bonus to weekly NP:
 The view exposes imported score, adjustment, effective score, NP, bonus, and
 final ANP for auditing.
 
+A postseason bye retains NP based on the full week's scores but has no
+head-to-head opponent, bonus, or ANP result.
+
 ## `regular_season_anp_standings`
 
 Sums NP, head-to-head bonuses, and ANP only for matchups whose phase is

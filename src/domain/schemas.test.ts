@@ -165,6 +165,48 @@ describe("seasonImportSnapshotSchema", () => {
       "must contain exactly one matchup for franchise",
     );
   });
+
+  it("accepts postseason bye records with one score", () => {
+    const snapshot = createSnapshot();
+    const secondMatchupId =
+      "99999999-9999-4999-8999-999999999999";
+    snapshot.matchups[0] = {
+      ...snapshot.matchups[0],
+      week: 15,
+      phase: "playoff",
+      awayFranchiseId: null,
+    };
+    snapshot.matchups.push({
+      id: secondMatchupId,
+      seasonId: ids.season,
+      week: 15,
+      phase: "consolation",
+      homeFranchiseId: ids.away,
+      awayFranchiseId: null,
+    });
+    snapshot.scores = [
+      snapshot.scores[0],
+      {
+        matchupId: secondMatchupId,
+        franchiseId: ids.away,
+        score: 99.75,
+      },
+    ];
+
+    expect(() => seasonImportSnapshotSchema.parse(snapshot)).not.toThrow();
+  });
+
+  it("rejects regular-season bye records", () => {
+    const snapshot = createSnapshot();
+    snapshot.matchups[0].awayFranchiseId = null;
+    snapshot.scores.pop();
+    snapshot.franchises.pop();
+    snapshot.franchiseNames.pop();
+
+    expect(() => seasonImportSnapshotSchema.parse(snapshot)).toThrow(
+      "regular-season matchups must have an opponent",
+    );
+  });
 });
 
 describe("matchupOverrideSchema", () => {

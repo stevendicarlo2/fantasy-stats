@@ -12,6 +12,7 @@ without exposing ESPN payload shapes or database-provider result types.
 - `FranchiseName` records the set of known names for a franchise without
   effective dates.
 - `Matchup` records its week, phase, and two participating franchises.
+- A postseason `Matchup` may omit the away franchise to represent a bye.
 - `ImportedMatchupScore` records one final imported score for each franchise in
   a matchup.
 - `SourceMapping` associates canonical UUIDs with provider identifiers.

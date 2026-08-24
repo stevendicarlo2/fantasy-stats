@@ -42,18 +42,24 @@ describe("ESPN environment", () => {
   it("returns validated ESPN credentials", () => {
     expect(
       parseEspnEnvironment({
+        ESPN_LEAGUE_ID: "123456",
+        ESPN_EARLIEST_SEASON: "2017",
         ESPN_S2: "synthetic-cookie",
         ESPN_SWID: "{00000000-0000-0000-0000-000000000000}",
       }),
     ).toEqual({
       ESPN_S2: "synthetic-cookie",
       ESPN_SWID: "{00000000-0000-0000-0000-000000000000}",
+      ESPN_LEAGUE_ID: 123456,
+      ESPN_EARLIEST_SEASON: 2017,
     });
   });
 
   it("rejects blank credentials", () => {
     expect(() =>
       parseEspnEnvironment({
+        ESPN_LEAGUE_ID: "123456",
+        ESPN_EARLIEST_SEASON: "2017",
         ESPN_S2: " ",
         ESPN_SWID: "",
       }),

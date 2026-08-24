@@ -13,6 +13,9 @@
 # testing
 /coverage
 
+# redacted local diagnostics
+/.diagnostics
+
 # next.js
 /.next/
 /out/
