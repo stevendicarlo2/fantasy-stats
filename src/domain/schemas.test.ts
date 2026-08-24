@@ -139,6 +139,32 @@ describe("seasonImportSnapshotSchema", () => {
       "must fall within the season's regular-season boundaries",
     );
   });
+
+  it("rejects duplicate franchise appearances within a week", () => {
+    const snapshot = createSnapshot();
+    const duplicateMatchupId =
+      "88888888-8888-4888-8888-888888888888";
+    snapshot.matchups.push({
+      ...snapshot.matchups[0],
+      id: duplicateMatchupId,
+    });
+    snapshot.scores.push(
+      {
+        matchupId: duplicateMatchupId,
+        franchiseId: ids.home,
+        score: 101.25,
+      },
+      {
+        matchupId: duplicateMatchupId,
+        franchiseId: ids.away,
+        score: 99.75,
+      },
+    );
+
+    expect(() => seasonImportSnapshotSchema.parse(snapshot)).toThrow(
+      "must contain exactly one matchup for franchise",
+    );
+  });
 });
 
 describe("matchupOverrideSchema", () => {

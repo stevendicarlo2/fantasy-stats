@@ -137,7 +137,10 @@ describe("libSQL database provider", () => {
 
   it("applies the canonical schema migration idempotently", async () => {
     await expect(provider.runMigrations()).resolves.toEqual({
-      appliedMigrations: ["0001_initial_schema.sql"],
+      appliedMigrations: [
+        "0001_initial_schema.sql",
+        "0002_scoring_views.sql",
+      ],
     });
     await expect(provider.runMigrations()).resolves.toEqual({
       appliedMigrations: [],

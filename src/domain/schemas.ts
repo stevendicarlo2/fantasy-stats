@@ -245,6 +245,7 @@ export const seasonImportSnapshotSchema: z.ZodType<SeasonImportSnapshot> =
       }
 
       const scoresByMatchup = new Map<string, Map<string, number>>();
+      const appearancesByWeek = new Map<number, Map<string, number>>();
 
       snapshot.matchups.forEach((matchup, index) => {
         if (matchup.seasonId !== snapshot.season.id) {
@@ -279,7 +280,34 @@ export const seasonImportSnapshotSchema: z.ZodType<SeasonImportSnapshot> =
             "must fall within the season's regular-season boundaries",
           );
         }
+
+        const weekAppearances =
+          appearancesByWeek.get(matchup.week) ?? new Map<string, number>();
+
+        for (const franchiseId of [
+          matchup.homeFranchiseId,
+          matchup.awayFranchiseId,
+        ]) {
+          weekAppearances.set(
+            franchiseId,
+            (weekAppearances.get(franchiseId) ?? 0) + 1,
+          );
+        }
+
+        appearancesByWeek.set(matchup.week, weekAppearances);
       });
+
+      for (const [week, appearances] of appearancesByWeek) {
+        for (const franchiseId of franchiseIds) {
+          if (appearances.get(franchiseId) !== 1) {
+            addReferenceIssue(
+              context,
+              ["matchups"],
+              `week ${week} must contain exactly one matchup for franchise ${franchiseId}`,
+            );
+          }
+        }
+      }
 
       snapshot.scores.forEach((score, index) => {
         const matchup = snapshot.matchups.find(
