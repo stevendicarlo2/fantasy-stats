@@ -22,6 +22,8 @@ file.
 
 | Variable | Purpose |
 | --- | --- |
+| `FANTASY_STATS_STORAGE` | Default `dummy`, `local`, or `turso` provider |
+| `FANTASY_STATS_LOCAL_DATABASE_FILE` | Local libSQL file path |
 | `TURSO_DATABASE_URL` | Turso/libSQL database URL |
 | `TURSO_AUTH_TOKEN` | Turso authentication token |
 | `ESPN_LEAGUE_ID` | Numeric ESPN fantasy league identifier |
@@ -40,21 +42,23 @@ logs, or documentation.
 
 ## Season import CLI
 
-Apply migrations and import a season:
+Import and validate a season with the default in-memory dummy storage:
 
 ```bash
 npm run import-season --year=2017
 ```
 
-Refresh a season that is already stored:
+Use persistent local storage:
 
 ```bash
-npm run refresh-season --year=2017
+npm run import-season --year=2017 --storage=local
+npm run refresh-season --year=2017 --storage=local
 ```
 
 The command loads `.env.local`, uses the same season import service as the web
-application, prints only the resulting audit run ID, and closes the database
-connection on success or failure.
+application, prints canonical record counts and the resulting audit run ID, and
+closes the storage provider on success or failure.
 
-The command requires a real Turso database URL and authentication token. Values
-copied unchanged from `.env.example` are rejected before any network request.
+Turso credentials are required only with `--storage=turso`. Values copied
+unchanged from `.env.example` are rejected before any connection attempt. See
+[storage providers](storage.md) for all modes and precedence rules.

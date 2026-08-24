@@ -26,10 +26,22 @@ describe("parseSeasonCommand", () => {
     expect(parseSeasonCommand(["import", "--year", "2017"])).toEqual({
       operation: "import",
       year: 2017,
+      storage: "dummy",
+      databaseFile: undefined,
     });
-    expect(parseSeasonCommand(["refresh", "--year", "2025"])).toEqual({
+    expect(
+      parseSeasonCommand([
+        "refresh",
+        "--year",
+        "2025",
+        "--storage",
+        "local",
+      ]),
+    ).toEqual({
       operation: "refresh",
       year: 2025,
+      storage: "local",
+      databaseFile: ".data/fantasy-stats.db",
     });
   });
 
@@ -50,34 +62,65 @@ describe("parseSeasonCommand", () => {
     ).toThrow(
       SeasonCommandUsageError,
     );
+    expect(() =>
+      parseSeasonCommand([
+        "import",
+        "--year",
+        "2025",
+        "--storage",
+        "unknown",
+      ]),
+    ).toThrow("Storage must be one of");
+    expect(() =>
+      parseSeasonCommand([
+        "import",
+        "--year",
+        "2025",
+        "--database-file",
+        "test.db",
+      ]),
+    ).toThrow("--database-file can only be used");
   });
 });
 
 describe("resolveSeasonArguments", () => {
   it("translates npm --year configuration for convenience scripts", () => {
-    expect(resolveSeasonArguments(["import"], "2017")).toEqual([
+    expect(
+      resolveSeasonArguments(["import"], {
+        year: "2017",
+        storage: "local",
+        databaseFile: "test.db",
+      }),
+    ).toEqual([
       "import",
       "--year",
       "2017",
+      "--storage",
+      "local",
+      "--database-file",
+      "test.db",
     ]);
   });
 
   it("leaves explicit CLI arguments unchanged", () => {
     expect(
-      resolveSeasonArguments(["import", "--year", "2017"], undefined),
+      resolveSeasonArguments(["import", "--year", "2017"], {}),
     ).toEqual(["import", "--year", "2017"]);
   });
 });
 
 describe("runSeasonCli", () => {
   const runMigrations = vi.fn();
+  const getSeasonImportSnapshot = vi.fn();
   const importSeason = vi.fn();
   const refreshSeason = vi.fn();
   const close = vi.fn();
   const stdout = vi.fn();
   const stderr = vi.fn();
   const createRuntime = vi.fn(() => ({
-    database: { runMigrations },
+    storageKind: "dummy" as const,
+    persistent: false,
+    database: { runMigrations, getSeasonImportSnapshot },
     service: { importSeason, refreshSeason },
     close,
   }));
@@ -85,6 +128,11 @@ describe("runSeasonCli", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     runMigrations.mockResolvedValue({ appliedMigrations: [] });
+    getSeasonImportSnapshot.mockResolvedValue({
+      franchises: [{}, {}],
+      matchups: [{}, {}, {}],
+      scores: [{}, {}, {}, {}, {}, {}],
+    });
     importSeason.mockResolvedValue(importRun);
     refreshSeason.mockResolvedValue({
       ...importRun,
@@ -104,7 +152,7 @@ describe("runSeasonCli", () => {
     expect(importSeason).toHaveBeenCalledWith(2025);
     expect(refreshSeason).not.toHaveBeenCalled();
     expect(stdout).toHaveBeenCalledWith(
-      `Season 2025 import succeeded (run ${importRun.id})`,
+      `Season 2025 import succeeded using dummy storage; 2 franchises; 3 matchups; 6 scores; not persisted; run ${importRun.id}`,
     );
     expect(close).toHaveBeenCalledOnce();
   });
@@ -120,6 +168,29 @@ describe("runSeasonCli", () => {
     expect(refreshSeason).toHaveBeenCalledWith(2025);
   });
 
+  it("passes parsed storage selection to the runtime factory", async () => {
+    await runSeasonCli(
+      [
+        "import",
+        "--year",
+        "2025",
+        "--storage",
+        "local",
+        "--database-file",
+        "custom.db",
+      ],
+      createRuntime,
+      { stdout, stderr },
+    );
+
+    expect(createRuntime).toHaveBeenCalledWith({
+      operation: "import",
+      year: 2025,
+      storage: "local",
+      databaseFile: "custom.db",
+    });
+  });
+
   it("returns usage errors without creating runtime resources", async () => {
     await expect(
       runSeasonCli(["import"], createRuntime, { stdout, stderr }),
@@ -127,7 +198,7 @@ describe("runSeasonCli", () => {
 
     expect(createRuntime).not.toHaveBeenCalled();
     expect(stderr).toHaveBeenCalledWith(
-      "Usage: npm run import-season --year=<year> or npm run refresh-season --year=<year>",
+      "Usage: npm run import-season --year=<year> [--storage=dummy|local|turso] [--database-file=<path>]",
     );
   });
 

@@ -1,12 +1,15 @@
 import { loadEnvConfig } from "@next/env";
 
 import { SeasonImportService } from "@/application/services/season-import-service";
-import { createLibSqlDatabaseProvider } from "@/server/adapters/database/libsql/libsql-database-provider";
 import { EspnFantasySource } from "@/server/adapters/fantasy/espn/espn-source";
 import {
   parseDatabaseEnvironment,
   parseEspnEnvironment,
 } from "@/server/config/environment-schema";
+import {
+  createSelectedStorage,
+  type StorageSelection,
+} from "@/server/storage/storage-provider";
 
 import {
   resolveSeasonArguments,
@@ -19,15 +22,36 @@ async function main() {
   const exitCode = await runSeasonCli(
     resolveSeasonArguments(
       process.argv.slice(2),
-      process.env.npm_config_year,
+      {
+        year: process.env.npm_config_year,
+        storage:
+          process.env.npm_config_storage ??
+          process.env.FANTASY_STATS_STORAGE,
+        databaseFile:
+          process.env.npm_config_database_file ??
+          process.env.FANTASY_STATS_LOCAL_DATABASE_FILE,
+      },
     ),
-    () => {
-      const databaseEnvironment = parseDatabaseEnvironment(process.env);
+    async (command) => {
       const espnEnvironment = parseEspnEnvironment(process.env);
-      const database = createLibSqlDatabaseProvider({
-        url: databaseEnvironment.TURSO_DATABASE_URL,
-        authToken: databaseEnvironment.TURSO_AUTH_TOKEN,
-      });
+      let selection: StorageSelection;
+
+      if (command.storage === "dummy") {
+        selection = { kind: "dummy" };
+      } else if (command.storage === "local") {
+        selection = {
+          kind: "local",
+          databaseFile: command.databaseFile!,
+        };
+      } else {
+        selection = {
+          kind: "turso",
+          environment: parseDatabaseEnvironment(process.env),
+        };
+      }
+
+      const storage = await createSelectedStorage(selection);
+      const database = storage.database;
       const source = new EspnFantasySource({
         leagueId: espnEnvironment.ESPN_LEAGUE_ID,
         earliestSeason: espnEnvironment.ESPN_EARLIEST_SEASON,
@@ -36,10 +60,12 @@ async function main() {
       });
 
       return {
+        storageKind: storage.kind,
+        persistent: storage.persistent,
         database,
         service: new SeasonImportService({ database, source }),
         close() {
-          database.close();
+          storage.close();
         },
       };
     },

@@ -16,6 +16,9 @@
 # redacted local diagnostics
 /.diagnostics
 
+# local development databases
+/.data
+
 # next.js
 /.next/
 /out/

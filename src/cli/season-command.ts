@@ -1,16 +1,24 @@
 import { SafeOperationalError } from "@/application/errors";
 import type { DatabaseProvider } from "@/application/ports/database-provider";
 import type { SeasonImportService } from "@/application/services/season-import-service";
+import type { StorageKind } from "@/server/storage/storage-provider";
 
 export type SeasonCommandOperation = "import" | "refresh";
 
 export interface SeasonCommand {
   operation: SeasonCommandOperation;
   year: number;
+  storage: StorageKind;
+  databaseFile?: string;
 }
 
 export interface SeasonCommandRuntime {
-  database: Pick<DatabaseProvider, "runMigrations">;
+  storageKind: StorageKind;
+  persistent: boolean;
+  database: Pick<
+    DatabaseProvider,
+    "runMigrations" | "getSeasonImportSnapshot"
+  >;
   service: Pick<SeasonImportService, "importSeason" | "refreshSeason">;
   close(): void;
 }
@@ -28,32 +36,60 @@ export class SeasonCommandUsageError extends SafeOperationalError {
 }
 
 const usageMessage =
-  "Usage: npm run import-season --year=<year> or npm run refresh-season --year=<year>";
+  "Usage: npm run import-season --year=<year> [--storage=dummy|local|turso] [--database-file=<path>]";
+
+export interface SeasonArgumentConfiguration {
+  year?: string;
+  storage?: string;
+  databaseFile?: string;
+}
 
 export function resolveSeasonArguments(
   arguments_: string[],
-  npmConfiguredYear: string | undefined,
+  configuration: SeasonArgumentConfiguration,
 ) {
-  if (
-    npmConfiguredYear !== undefined &&
-    arguments_.length === 1 &&
-    (arguments_[0] === "import" || arguments_[0] === "refresh")
-  ) {
-    return [...arguments_, "--year", npmConfiguredYear];
+  const resolved = [...arguments_];
+
+  for (const [option, value] of [
+    ["--year", configuration.year],
+    ["--storage", configuration.storage],
+    ["--database-file", configuration.databaseFile],
+  ] as const) {
+    if (value !== undefined && !resolved.includes(option)) {
+      resolved.push(option, value);
+    }
   }
 
-  return arguments_;
+  return resolved;
 }
 
 export function parseSeasonCommand(arguments_: string[]): SeasonCommand {
-  const [operation, yearOption, yearValue, ...extraArguments] = arguments_;
+  const [operation, ...optionArguments] = arguments_;
 
-  if (
-    (operation !== "import" && operation !== "refresh") ||
-    yearOption !== "--year" ||
-    yearValue === undefined ||
-    extraArguments.length > 0
-  ) {
+  if (operation !== "import" && operation !== "refresh") {
+    throw new SeasonCommandUsageError(usageMessage);
+  }
+
+  const options = new Map<string, string>();
+
+  for (let index = 0; index < optionArguments.length; index += 2) {
+    const option = optionArguments[index];
+    const value = optionArguments[index + 1];
+
+    if (
+      value === undefined ||
+      !["--year", "--storage", "--database-file"].includes(option) ||
+      options.has(option)
+    ) {
+      throw new SeasonCommandUsageError(usageMessage);
+    }
+
+    options.set(option, value);
+  }
+
+  const yearValue = options.get("--year");
+
+  if (yearValue === undefined) {
     throw new SeasonCommandUsageError(usageMessage);
   }
 
@@ -70,7 +106,31 @@ export function parseSeasonCommand(arguments_: string[]): SeasonCommand {
     );
   }
 
-  return { operation, year };
+  const storage = options.get("--storage") ?? "dummy";
+
+  if (!["dummy", "local", "turso"].includes(storage)) {
+    throw new SeasonCommandUsageError(
+      "Storage must be one of: dummy, local, turso",
+    );
+  }
+
+  const databaseFile = options.get("--database-file");
+
+  if (databaseFile !== undefined && storage !== "local") {
+    throw new SeasonCommandUsageError(
+      "--database-file can only be used with --storage=local",
+    );
+  }
+
+  return {
+    operation,
+    year,
+    storage: storage as StorageKind,
+    databaseFile:
+      storage === "local"
+        ? (databaseFile ?? ".data/fantasy-stats.db")
+        : undefined,
+  };
 }
 
 function safeCliErrorMessage(error: unknown) {
@@ -83,7 +143,9 @@ function safeCliErrorMessage(error: unknown) {
 
 export async function runSeasonCli(
   arguments_: string[],
-  createRuntime: () => SeasonCommandRuntime | Promise<SeasonCommandRuntime>,
+  createRuntime: (
+    command: SeasonCommand,
+  ) => SeasonCommandRuntime | Promise<SeasonCommandRuntime>,
   io: SeasonCommandIo,
 ): Promise<number> {
   let command: SeasonCommand;
@@ -98,15 +160,31 @@ export async function runSeasonCli(
   let runtime: SeasonCommandRuntime | undefined;
 
   try {
-    runtime = await createRuntime();
+    runtime = await createRuntime(command);
     await runtime.database.runMigrations();
     const importRun =
       command.operation === "import"
         ? await runtime.service.importSeason(command.year)
         : await runtime.service.refreshSeason(command.year);
+    const snapshot = await runtime.database.getSeasonImportSnapshot(
+      command.year,
+    );
+
+    if (!snapshot) {
+      throw new SafeOperationalError(
+        `Storage did not return season ${command.year} after a successful import`,
+      );
+    }
 
     io.stdout(
-      `Season ${command.year} ${command.operation} succeeded (run ${importRun.id})`,
+      [
+        `Season ${command.year} ${command.operation} succeeded using ${runtime.storageKind} storage`,
+        `${snapshot.franchises.length} franchises`,
+        `${snapshot.matchups.length} matchups`,
+        `${snapshot.scores.length} scores`,
+        runtime.persistent ? "persisted" : "not persisted",
+        `run ${importRun.id}`,
+      ].join("; "),
     );
     return 0;
   } catch (error) {
