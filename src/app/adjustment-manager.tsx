@@ -8,18 +8,24 @@ import {
 import { runAdjustmentAction } from "./actions";
 
 export interface AdjustmentCandidate {
-  matchupId: string;
   franchiseId: string;
-  week: number;
   teamLabel: string;
-  opponentLabel: string;
   importedScore: number;
   existingAdjustment: number | null;
+}
+
+export interface AdjustmentMatchup {
+  id: string;
+  week: number;
+  label: string;
+  home: AdjustmentCandidate;
+  away: AdjustmentCandidate | null;
 }
 
 export interface ExistingAdjustment {
   id: string;
   week: number;
+  matchupLabel: string;
   teamLabel: string;
   scoreAdjustment: number;
   reason: string;
@@ -27,7 +33,7 @@ export interface ExistingAdjustment {
 
 interface AdjustmentManagerProps {
   seasonYear: number;
-  candidates: AdjustmentCandidate[];
+  matchups: AdjustmentMatchup[];
   existingAdjustments: ExistingAdjustment[];
 }
 
@@ -37,7 +43,7 @@ function formatSigned(value: number) {
 
 export function AdjustmentManager({
   seasonYear,
-  candidates,
+  matchups,
   existingAdjustments,
 }: AdjustmentManagerProps) {
   const [state, formAction, pending] = useActionState(
@@ -60,19 +66,30 @@ export function AdjustmentManager({
 
           <label htmlFor="adjustment-target">Matchup score</label>
           <select id="adjustment-target" name="target" required>
-            {candidates.map((candidate) => (
-              <option
-                key={`${candidate.matchupId}:${candidate.franchiseId}`}
-                value={`${candidate.matchupId}:${candidate.franchiseId}`}
+            {matchups.map((matchup) => (
+              <optgroup
+                key={matchup.id}
+                label={`Week ${matchup.week}: ${matchup.label}`}
               >
-                Week {candidate.week}: {candidate.teamLabel} vs.{" "}
-                {candidate.opponentLabel} (ESPN{" "}
-                {candidate.importedScore.toFixed(2)}
-                {candidate.existingAdjustment === null
-                  ? ""
-                  : `, current ${formatSigned(candidate.existingAdjustment)}`}
-                )
-              </option>
+                {[matchup.home, matchup.away]
+                  .filter(
+                    (candidate): candidate is AdjustmentCandidate =>
+                      candidate !== null,
+                  )
+                  .map((candidate) => (
+                    <option
+                      key={candidate.franchiseId}
+                      value={`${matchup.id}:${candidate.franchiseId}`}
+                    >
+                      {candidate.teamLabel} (ESPN{" "}
+                      {candidate.importedScore.toFixed(2)}
+                      {candidate.existingAdjustment === null
+                        ? ""
+                        : `, current ${formatSigned(candidate.existingAdjustment)}`}
+                      )
+                    </option>
+                  ))}
+              </optgroup>
             ))}
           </select>
 
@@ -112,8 +129,11 @@ export function AdjustmentManager({
               <article className="adjustment-item" key={adjustment.id}>
                 <div>
                   <strong>
-                    Week {adjustment.week}: {adjustment.teamLabel}
+                    Week {adjustment.week}: {adjustment.matchupLabel}
                   </strong>
+                  <span className="adjustment-team">
+                    {adjustment.teamLabel}
+                  </span>
                   <span>{formatSigned(adjustment.scoreAdjustment)}</span>
                   <p>{adjustment.reason}</p>
                 </div>

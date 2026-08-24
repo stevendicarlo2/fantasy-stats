@@ -883,6 +883,11 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
         SELECT
           results.season_year AS seasonYear,
           results.matchup_id AS matchupId,
+          CASE
+            WHEN matchups.home_franchise_id = results.franchise_id
+              THEN 'home'
+            ELSE 'away'
+          END AS matchupSide,
           results.week,
           results.phase,
           results.franchise_id AS franchiseId,
@@ -896,6 +901,7 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
           results.head_to_head_bonus AS headToHeadBonus,
           results.adjusted_nascar_points AS adjustedNascarPoints
         FROM weekly_adjusted_nascar_points AS results
+        INNER JOIN matchups ON matchups.id = results.matchup_id
         INNER JOIN franchises
           ON franchises.id = results.franchise_id
         LEFT JOIN (
@@ -914,7 +920,11 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
         ORDER BY
           results.week,
           results.matchup_id,
-          results.effective_score DESC,
+          CASE
+            WHEN matchups.home_franchise_id = results.franchise_id
+              THEN 0
+            ELSE 1
+          END,
           results.franchise_id
       `,
       args: [seasonYear],

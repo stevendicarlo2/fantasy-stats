@@ -3,11 +3,13 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
 import { SafeOperationalError } from "@/application/errors";
+import type { WeeklyTeamResult } from "@/application/ports/database-provider";
 import { getWebRuntime } from "@/server/runtime/web-runtime";
 
 import {
   AdjustmentManager,
   type AdjustmentCandidate,
+  type AdjustmentMatchup,
   type ExistingAdjustment,
 } from "../../../adjustment-manager";
 
@@ -39,43 +41,69 @@ async function loadAdjustmentPage(yearValue: string) {
         adjustment,
       ]),
     );
-    const candidates: AdjustmentCandidate[] = stats.weeklyResults.map(
-      (result) => {
+    function createCandidate(
+      result: WeeklyTeamResult,
+    ): AdjustmentCandidate {
         const target = `${result.matchupId}:${result.franchiseId}`;
         const existingAdjustment = adjustmentsByTarget.get(target);
 
         return {
-          matchupId: result.matchupId,
           franchiseId: result.franchiseId,
-          week: result.week,
           teamLabel:
             result.teamName ?? result.ownerName ?? "Unknown franchise",
-          opponentLabel: result.opponentTeamName ?? "Bye",
           importedScore:
             result.effectiveScore - result.scoreAdjustment,
           existingAdjustment:
             existingAdjustment?.scoreAdjustment ?? null,
         };
-      },
+    }
+
+    const matchups: AdjustmentMatchup[] = stats.matchups.map(
+      (matchup) => ({
+        id: matchup.id,
+        week: matchup.week,
+        label: `${matchup.home.teamName ?? matchup.home.ownerName ?? "Unknown home team"} vs. ${
+          matchup.away?.teamName ??
+          matchup.away?.ownerName ??
+          "Bye"
+        }`,
+        home: createCandidate(matchup.home),
+        away: matchup.away ? createCandidate(matchup.away) : null,
+      }),
     );
     const resultsByTarget = new Map(
-      stats.weeklyResults.map((result) => [
-        `${result.matchupId}:${result.franchiseId}`,
-        result,
-      ]),
+      stats.matchups.flatMap((matchup) =>
+        [matchup.home, matchup.away]
+          .filter(
+            (
+              result,
+            ): result is NonNullable<typeof result> => result !== null,
+          )
+          .map((result) => [
+            `${result.matchupId}:${result.franchiseId}`,
+            { matchup, result },
+          ] as const),
+      ),
     );
     const existingAdjustments: ExistingAdjustment[] = adjustments.map(
       (adjustment) => {
-        const result = resultsByTarget.get(
+        const target = resultsByTarget.get(
           `${adjustment.matchupId}:${adjustment.franchiseId}`,
         );
 
         return {
           id: adjustment.id,
-          week: result?.week ?? 0,
+          week: target?.matchup.week ?? 0,
+          matchupLabel: target
+            ? `${target.matchup.home.teamName ?? target.matchup.home.ownerName ?? "Unknown home team"} vs. ${
+                target.matchup.away?.teamName ??
+                target.matchup.away?.ownerName ??
+                "Bye"
+              }`
+            : "Unknown matchup",
           teamLabel:
-            result?.teamName ??
-            result?.ownerName ??
+            target?.result.teamName ??
+            target?.result.ownerName ??
             "Unknown franchise",
           scoreAdjustment: adjustment.scoreAdjustment,
           reason: adjustment.reason,
@@ -86,7 +114,7 @@ async function loadAdjustmentPage(yearValue: string) {
     return {
       status: "ready" as const,
       year,
-      candidates,
+      matchups,
       existingAdjustments,
     };
   } catch (error) {
@@ -143,7 +171,7 @@ export default async function AdjustmentPage({
       </header>
       <AdjustmentManager
         seasonYear={pageData.year}
-        candidates={pageData.candidates}
+        matchups={pageData.matchups}
         existingAdjustments={pageData.existingAdjustments}
       />
     </main>

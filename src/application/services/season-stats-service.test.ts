@@ -27,7 +27,20 @@ describe("SeasonStatsService", () => {
         },
       }),
       listSeasonStandings: vi.fn().mockResolvedValue([{ qualificationRank: 1 }]),
-      listWeeklyTeamResults: vi.fn().mockResolvedValue([{ week: 1 }]),
+      listWeeklyTeamResults: vi.fn().mockResolvedValue([
+        {
+          matchupId: "11111111-1111-4111-8111-111111111111",
+          matchupSide: "home",
+          week: 1,
+          phase: "regular",
+        },
+        {
+          matchupId: "11111111-1111-4111-8111-111111111111",
+          matchupSide: "away",
+          week: 1,
+          phase: "regular",
+        },
+      ]),
     };
     const service = new SeasonStatsService(database);
 
@@ -37,7 +50,42 @@ describe("SeasonStatsService", () => {
       regularSeasonStartWeek: 1,
       regularSeasonEndWeek: 14,
       standings: [{ qualificationRank: 1 }],
-      weeklyResults: [{ week: 1 }],
+      matchups: [
+        {
+          id: "11111111-1111-4111-8111-111111111111",
+          week: 1,
+          phase: "regular",
+          home: expect.objectContaining({ matchupSide: "home" }),
+          away: expect.objectContaining({ matchupSide: "away" }),
+        },
+      ],
     });
+  });
+
+  it("rejects derived results without a home team", async () => {
+    const database = {
+      getSeasonImportSnapshot: vi.fn().mockResolvedValue({
+        season: {
+          year: 2025,
+          teamCount: 2,
+          regularSeasonStartWeek: 1,
+          regularSeasonEndWeek: 1,
+        },
+      }),
+      listSeasonStandings: vi.fn().mockResolvedValue([]),
+      listWeeklyTeamResults: vi.fn().mockResolvedValue([
+        {
+          matchupId: "11111111-1111-4111-8111-111111111111",
+          matchupSide: "away",
+          week: 1,
+          phase: "regular",
+        },
+      ]),
+    };
+    const service = new SeasonStatsService(database);
+
+    await expect(service.getSeasonStats(2025)).rejects.toThrow(
+      "has inconsistent team results",
+    );
   });
 });

@@ -219,6 +219,7 @@ describe("libSQL database provider", () => {
     await expect(provider.listWeeklyTeamResults(2025)).resolves.toEqual([
       expect.objectContaining({
         matchupId: ids.matchup,
+        matchupSide: "home",
         franchiseId: ids.home,
         opponentFranchiseId: ids.away,
         effectiveScore: 101.25,
@@ -228,6 +229,7 @@ describe("libSQL database provider", () => {
       }),
       expect.objectContaining({
         matchupId: ids.matchup,
+        matchupSide: "away",
         franchiseId: ids.away,
         opponentFranchiseId: ids.home,
         effectiveScore: 99.75,

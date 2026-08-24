@@ -213,6 +213,11 @@ textarea {
   font-weight: 750;
 }
 
+.adjustment-item .adjustment-team {
+  color: #d8e3dd;
+  font-weight: 500;
+}
+
 .adjustment-item p {
   margin: 0.5rem 0 0;
 }
@@ -246,6 +251,31 @@ button.danger {
 }
 
 .week-panel .table-wrap {
+  padding: 0 0.75rem 0.75rem;
+}
+
+.matchup-list {
+  display: grid;
+  gap: 1rem;
+  padding: 0 1rem 1rem;
+}
+
+.matchup-card {
+  overflow: hidden;
+  border: 1px solid #27483a;
+  border-radius: 0.8rem;
+  background: rgb(12 32 24 / 72%);
+}
+
+.matchup-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+}
+
+.matchup-card .table-wrap {
   padding: 0 0.75rem 0.75rem;
 }
 

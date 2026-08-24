@@ -4,6 +4,7 @@ import { connection } from "next/server";
 
 import { SafeOperationalError } from "@/application/errors";
 import type { WeeklyTeamResult } from "@/application/ports/database-provider";
+import type { SeasonMatchupResult } from "@/application/services/season-stats-service";
 import { getWebRuntime } from "@/server/runtime/web-runtime";
 
 interface SeasonPageProps {
@@ -70,12 +71,12 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
   }
 
   const { stats } = pageData;
-  const resultsByWeek = new Map<number, WeeklyTeamResult[]>();
+  const matchupsByWeek = new Map<number, SeasonMatchupResult[]>();
 
-  for (const result of stats.weeklyResults) {
-    const weekResults = resultsByWeek.get(result.week) ?? [];
-    weekResults.push(result);
-    resultsByWeek.set(result.week, weekResults);
+  for (const matchup of stats.matchups) {
+    const weekMatchups = matchupsByWeek.get(matchup.week) ?? [];
+    weekMatchups.push(matchup);
+    matchupsByWeek.set(matchup.week, weekMatchups);
   }
 
   return (
@@ -147,44 +148,73 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
           <p className="panel-kicker">Scoring detail</p>
           <h2>Weekly results</h2>
         </div>
-        {[...resultsByWeek.entries()].map(([week, results]) => (
+        {[...matchupsByWeek.entries()].map(([week, matchups]) => (
           <details className="week-panel" key={week}>
             <summary>
               <span>Week {week}</span>
             </summary>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Phase</th>
-                    <th>Team</th>
-                    <th>Opponent</th>
-                    <th>Score</th>
-                    <th>Adjustment</th>
-                    <th>NP</th>
-                    <th>H2H bonus</th>
-                    <th>ANP</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.map((result) => (
-                    <tr key={`${result.matchupId}:${result.franchiseId}`}>
-                      <td>
-                        <span className={`phase ${result.phase}`}>
-                          {result.phase}
+            <div className="matchup-list">
+              {matchups.map((matchup) => {
+                const results = matchup.away
+                  ? [matchup.home, matchup.away]
+                  : [matchup.home];
+
+                return (
+                    <article className="matchup-card" key={matchup.id}>
+                      <header>
+                        <strong>
+                          {teamLabel(matchup.home)} vs.{" "}
+                          {matchup.away
+                            ? teamLabel(matchup.away)
+                            : "Bye"}
+                        </strong>
+                        <span className={`phase ${matchup.phase}`}>
+                          {matchup.phase}
                         </span>
-                      </td>
-                      <td>{teamLabel(result)}</td>
-                      <td>{result.opponentTeamName ?? "Bye"}</td>
-                      <td>{formatPoints(result.effectiveScore)}</td>
-                      <td>{formatPoints(result.scoreAdjustment)}</td>
-                      <td>{formatPoints(result.nascarPoints)}</td>
-                      <td>{formatPoints(result.headToHeadBonus)}</td>
-                      <td>{formatPoints(result.adjustedNascarPoints)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </header>
+                      <div className="table-wrap">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Side</th>
+                              <th>Team</th>
+                              <th>Score</th>
+                              <th>Adjustment</th>
+                              <th>NP</th>
+                              <th>H2H bonus</th>
+                              <th>ANP</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {results.map((result) => (
+                              <tr key={result.franchiseId}>
+                                <td>{result.matchupSide}</td>
+                                <td>{teamLabel(result)}</td>
+                                <td>
+                                  {formatPoints(result.effectiveScore)}
+                                </td>
+                                <td>
+                                  {formatPoints(result.scoreAdjustment)}
+                                </td>
+                                <td>
+                                  {formatPoints(result.nascarPoints)}
+                                </td>
+                                <td>
+                                  {formatPoints(result.headToHeadBonus)}
+                                </td>
+                                <td>
+                                  {formatPoints(
+                                    result.adjustedNascarPoints,
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </article>
+                  );
+              })}
             </div>
           </details>
         ))}

@@ -69,6 +69,7 @@ export const seasonStandingSchema: z.ZodType<SeasonStanding> = z.object({
 export const weeklyTeamResultSchema: z.ZodType<WeeklyTeamResult> = z.object({
   seasonYear: z.number().int(),
   matchupId: z.uuid(),
+  matchupSide: z.enum(["home", "away"]),
   week: z.number().int().positive(),
   phase: z.enum(["regular", "playoff", "consolation"]),
   franchiseId: z.uuid(),

@@ -61,6 +61,7 @@ export interface SeasonStanding {
 export interface WeeklyTeamResult {
   seasonYear: number;
   matchupId: CanonicalId;
+  matchupSide: "home" | "away";
   week: number;
   phase: MatchupPhase;
   franchiseId: CanonicalId;
