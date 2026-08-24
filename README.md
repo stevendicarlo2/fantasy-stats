@@ -16,3 +16,11 @@ npm run dev
 Credentials are validated only when the associated server-side database or ESPN
 operation runs. See [local development setup](docs/development.md) and the
 [initial plan](docs/initialPlan.md).
+
+Import or refresh a season with the same application service used by the web
+application:
+
+```bash
+npm run import-season --year=2017
+npm run refresh-season --year=2017
+```

@@ -8,10 +8,14 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "season": "tsx src/cli/season.ts",
+    "import-season": "tsx src/cli/season.ts import",
+    "refresh-season": "tsx src/cli/season.ts refresh"
   },
   "dependencies": {
     "@libsql/client": "^0.17.4",
+    "@next/env": "^16.3.1",
     "next": "16.3.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -24,6 +28,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
+    "tsx": "^4.23.12",
     "typescript": "^5",
     "vitest": "^3.2.6"
   }

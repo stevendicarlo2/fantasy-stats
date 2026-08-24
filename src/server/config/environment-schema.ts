@@ -1,8 +1,17 @@
 import { z } from "zod";
 
+import { SafeOperationalError } from "@/application/errors";
+
 type EnvironmentValues = Readonly<Record<string, string | undefined>>;
 
-const requiredSecret = z.string().trim().min(1, "is required");
+const requiredSecret = z
+  .string()
+  .trim()
+  .min(1, "is required")
+  .refine(
+    (value) => !value.startsWith("replace-with-"),
+    "must replace the example placeholder",
+  );
 
 const tursoUrl = requiredSecret.pipe(
   z
@@ -10,6 +19,10 @@ const tursoUrl = requiredSecret.pipe(
     .refine(
       (value) => ["libsql:", "https:", "http:"].includes(new URL(value).protocol),
       "must use the libsql, https, or http protocol",
+    )
+    .refine(
+      (value) => new URL(value).hostname !== "your-database.turso.io",
+      "must replace the example placeholder",
     ),
 );
 
@@ -28,7 +41,7 @@ const espnEnvironmentSchema = z.object({
 export type DatabaseEnvironment = z.infer<typeof databaseEnvironmentSchema>;
 export type EspnEnvironment = z.infer<typeof espnEnvironmentSchema>;
 
-export class EnvironmentConfigurationError extends Error {
+export class EnvironmentConfigurationError extends SafeOperationalError {
   constructor(service: string, issues: z.core.$ZodIssue[]) {
     const details = issues
       .map((issue) => `${issue.path.join(".") || "environment"} ${issue.message}`)

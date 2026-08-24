@@ -37,3 +37,24 @@ at the external boundary.
 
 Do not add real credentials or league data to `.env.example`, tests, fixtures,
 logs, or documentation.
+
+## Season import CLI
+
+Apply migrations and import a season:
+
+```bash
+npm run import-season --year=2017
+```
+
+Refresh a season that is already stored:
+
+```bash
+npm run refresh-season --year=2017
+```
+
+The command loads `.env.local`, uses the same season import service as the web
+application, prints only the resulting audit run ID, and closes the database
+connection on success or failure.
+
+The command requires a real Turso database URL and authentication token. Values
+copied unchanged from `.env.example` are rejected before any network request.

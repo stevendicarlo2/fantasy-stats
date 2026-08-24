@@ -36,6 +36,15 @@ describe("database environment", () => {
       }),
     ).toThrow("must use the libsql, https, or http protocol");
   });
+
+  it("rejects example database placeholders", () => {
+    expect(() =>
+      parseDatabaseEnvironment({
+        TURSO_DATABASE_URL: "libsql://your-database.turso.io",
+        TURSO_AUTH_TOKEN: "replace-with-your-token",
+      }),
+    ).toThrow("must replace the example placeholder");
+  });
 });
 
 describe("ESPN environment", () => {
