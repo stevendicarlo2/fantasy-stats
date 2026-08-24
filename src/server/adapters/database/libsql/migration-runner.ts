@@ -178,10 +178,23 @@ export function createLocalMigrationRunner(
   }
 
   const client = createClient({ url: options.databaseUrl });
+  const runner = createMigrationRunner(client, options.migrationsDirectory);
 
   return {
+    runMigrations: runner.runMigrations,
+    close() {
+      client.close();
+    },
+  };
+}
+
+export function createMigrationRunner(
+  client: Client,
+  migrationsDirectory: string,
+): Pick<LocalMigrationRunner, "runMigrations"> {
+  return {
     async runMigrations() {
-      const migrations = await loadMigrations(options.migrationsDirectory);
+      const migrations = await loadMigrations(migrationsDirectory);
 
       await client.execute(`
         CREATE TABLE IF NOT EXISTS _fantasy_stats_migrations (
@@ -204,9 +217,6 @@ export function createLocalMigrationRunner(
       return {
         appliedMigrations: await applyMigrations(client, pendingMigrations),
       };
-    },
-    close() {
-      client.close();
     },
   };
 }

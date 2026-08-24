@@ -35,6 +35,6 @@ statements.
 ## Boundaries
 
 The public server-only module is `local-database.ts`. libSQL client and result
-types remain internal to this adapter. The migration runner currently provides
-infrastructure only; canonical fantasy tables and the complete
-`DatabaseProvider` implementation are added in later implementation steps.
+types remain internal to this adapter. `createLocalDatabaseProvider` uses the
+same complete libSQL `DatabaseProvider` implementation as Turso, but connects
+it to a local `file:` database for fast tests and development.
