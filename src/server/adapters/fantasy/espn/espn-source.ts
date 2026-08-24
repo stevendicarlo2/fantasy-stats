@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 
 import { z } from "zod";
 
+import { SafeOperationalError } from "@/application/errors";
 import type {
   FantasySource,
   FetchSeasonInput,
@@ -82,28 +83,28 @@ export interface EspnSourceOptions {
   diagnosticsDirectory?: string;
 }
 
-export class EspnAuthenticationError extends Error {
+export class EspnAuthenticationError extends SafeOperationalError {
   constructor() {
     super("ESPN rejected the configured private-league authentication");
     this.name = "EspnAuthenticationError";
   }
 }
 
-export class EspnHttpError extends Error {
+export class EspnHttpError extends SafeOperationalError {
   constructor(status: number) {
     super(`ESPN request failed with HTTP status ${status}`);
     this.name = "EspnHttpError";
   }
 }
 
-export class EspnPayloadError extends Error {
+export class EspnPayloadError extends SafeOperationalError {
   constructor(message: string) {
     super(message);
     this.name = "EspnPayloadError";
   }
 }
 
-export class EspnMappingError extends Error {
+export class EspnMappingError extends SafeOperationalError {
   constructor(message: string) {
     super(message);
     this.name = "EspnMappingError";

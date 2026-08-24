@@ -9,6 +9,7 @@ import {
 } from "@libsql/client";
 import { z } from "zod";
 
+import { SafeOperationalError } from "@/application/errors";
 import type {
   CommitSeasonImportInput,
   DatabaseProvider,
@@ -58,7 +59,7 @@ export interface CloseableDatabaseProvider extends DatabaseProvider {
   close(): void;
 }
 
-export class LibSqlDatabaseError extends Error {
+export class LibSqlDatabaseError extends SafeOperationalError {
   constructor(message: string) {
     super(message);
     this.name = "LibSqlDatabaseError";
