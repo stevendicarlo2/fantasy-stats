@@ -66,6 +66,8 @@ FANTASY_STATS_LOCAL_DATABASE_FILE=.data/fantasy-stats.db
 The database-file setting is optional and defaults to the path shown above.
 The dashboard applies migrations during server initialization, lists imported
 seasons and recent import runs, and provides import and refresh actions.
+Imported season links show cumulative regular-season ANP qualification
+standings and weekly effective-score, NP, head-to-head bonus, and ANP results.
 
 ## Turso storage
 

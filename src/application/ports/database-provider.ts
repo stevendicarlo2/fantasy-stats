@@ -3,6 +3,7 @@ import type {
   ImportOperation,
   ImportRun,
   IsoDateTime,
+  MatchupPhase,
   MatchupOverride,
   SeasonImportSnapshot,
   SourceMapping,
@@ -45,6 +46,35 @@ export interface FailImportRunInput {
   errorMessage: string;
 }
 
+export interface SeasonStanding {
+  seasonYear: number;
+  franchiseId: CanonicalId;
+  teamName: string | null;
+  ownerName: string | null;
+  weeksPlayed: number;
+  totalNascarPoints: number;
+  totalHeadToHeadBonus: number;
+  totalAdjustedNascarPoints: number;
+  qualificationRank: number;
+}
+
+export interface WeeklyTeamResult {
+  seasonYear: number;
+  matchupId: CanonicalId;
+  week: number;
+  phase: MatchupPhase;
+  franchiseId: CanonicalId;
+  teamName: string | null;
+  ownerName: string | null;
+  opponentFranchiseId: CanonicalId | null;
+  opponentTeamName: string | null;
+  effectiveScore: number;
+  scoreAdjustment: number;
+  nascarPoints: number;
+  headToHeadBonus: number | null;
+  adjustedNascarPoints: number | null;
+}
+
 export interface DatabaseProvider {
   runMigrations(): Promise<MigrationResult>;
 
@@ -58,6 +88,8 @@ export interface DatabaseProvider {
   getSeasonImportSnapshot(
     seasonYear: number,
   ): Promise<SeasonImportSnapshot | null>;
+  listSeasonStandings(seasonYear: number): Promise<SeasonStanding[]>;
+  listWeeklyTeamResults(seasonYear: number): Promise<WeeklyTeamResult[]>;
 
   listMatchupOverrides(seasonId: CanonicalId): Promise<MatchupOverride[]>;
   saveMatchupOverride(

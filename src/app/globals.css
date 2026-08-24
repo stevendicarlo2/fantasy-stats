@@ -23,6 +23,11 @@ select {
   font: inherit;
 }
 
+a {
+  color: #9aebbe;
+  text-underline-offset: 0.2em;
+}
+
 .shell {
   width: min(76rem, 100%);
   min-height: 100vh;
@@ -121,6 +126,65 @@ p {
 
 .audit-panel {
   margin-top: 1.5rem;
+}
+
+.back-link {
+  display: inline-flex;
+  margin-bottom: 2rem;
+  color: #9aebbe;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.season-hero {
+  margin-top: 1rem;
+}
+
+.weekly-section {
+  display: grid;
+  gap: 1rem;
+  margin-top: 3rem;
+}
+
+.week-panel {
+  overflow: hidden;
+  border: 1px solid #27483a;
+  border-radius: 1rem;
+  background: rgb(9 27 20 / 82%);
+}
+
+.week-panel summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  color: #e3ece7;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.week-panel .table-wrap {
+  padding: 0 0.75rem 0.75rem;
+}
+
+.phase {
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  color: #a8bdb3;
+  background: #173429;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.phase.playoff {
+  color: #f2d18c;
+  background: rgb(170 132 47 / 30%);
+}
+
+.phase.consolation {
+  color: #b9c8c0;
+  background: rgb(86 103 95 / 35%);
 }
 
 .import-form {

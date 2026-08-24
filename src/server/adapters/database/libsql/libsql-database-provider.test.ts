@@ -195,6 +195,49 @@ describe("libSQL database provider", () => {
     ).resolves.toEqual([matchupOverride]);
   });
 
+  it("returns typed season standings and weekly scoring results", async () => {
+    await provider.runMigrations();
+    await importSnapshot();
+
+    await expect(provider.listSeasonStandings(2025)).resolves.toEqual([
+      expect.objectContaining({
+        franchiseId: ids.home,
+        teamName: "Home Team",
+        weeksPlayed: 1,
+        totalNascarPoints: 2,
+        totalHeadToHeadBonus: 2,
+        totalAdjustedNascarPoints: 4,
+        qualificationRank: 1,
+      }),
+      expect.objectContaining({
+        franchiseId: ids.away,
+        teamName: "Away Team",
+        totalAdjustedNascarPoints: 1,
+        qualificationRank: 2,
+      }),
+    ]);
+    await expect(provider.listWeeklyTeamResults(2025)).resolves.toEqual([
+      expect.objectContaining({
+        matchupId: ids.matchup,
+        franchiseId: ids.home,
+        opponentFranchiseId: ids.away,
+        effectiveScore: 101.25,
+        nascarPoints: 2,
+        headToHeadBonus: 2,
+        adjustedNascarPoints: 4,
+      }),
+      expect.objectContaining({
+        matchupId: ids.matchup,
+        franchiseId: ids.away,
+        opponentFranchiseId: ids.home,
+        effectiveScore: 99.75,
+        nascarPoints: 1,
+        headToHeadBonus: 0,
+        adjustedNascarPoints: 1,
+      }),
+    ]);
+  });
+
   it("records failed import runs explicitly", async () => {
     await provider.runMigrations();
     await provider.startImportRun({

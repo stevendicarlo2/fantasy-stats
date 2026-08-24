@@ -55,6 +55,12 @@ const databaseProviderContract = {
   async getSeasonImportSnapshot() {
     return null;
   },
+  async listSeasonStandings() {
+    return [];
+  },
+  async listWeeklyTeamResults() {
+    return [];
+  },
   async listMatchupOverrides() {
     return [];
   },

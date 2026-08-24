@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import Link from "next/link";
 
 import { SafeOperationalError } from "@/application/errors";
 import { getWebRuntime } from "@/server/runtime/web-runtime";
@@ -97,7 +98,11 @@ export default async function Home() {
                   <tbody>
                     {dashboard.importedSeasons.map((season) => (
                       <tr key={season.year}>
-                        <td>{season.year}</td>
+                        <td>
+                          <Link href={`/seasons/${season.year}`}>
+                            {season.year}
+                          </Link>
+                        </td>
                         <td>{season.teamCount}</td>
                         <td>{season.matchupCount}</td>
                         <td>{season.scoreCount}</td>

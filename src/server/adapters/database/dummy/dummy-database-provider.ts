@@ -5,7 +5,9 @@ import type {
   FailImportRunInput,
   ReadOnlyQuery,
   ReadOnlyQueryResult,
+  SeasonStanding,
   StartImportRunInput,
+  WeeklyTeamResult,
 } from "@/application/ports/database-provider";
 import {
   importRunSchema,
@@ -119,6 +121,20 @@ export class DummyDatabaseProvider implements DatabaseProvider {
   ): Promise<SeasonImportSnapshot | null> {
     const snapshot = this.snapshots.get(seasonYear);
     return snapshot ? copy(snapshot) : null;
+  }
+
+  async listSeasonStandings(
+    seasonYear: number,
+  ): Promise<SeasonStanding[]> {
+    void seasonYear;
+    throw new UnsupportedDummyStorageOperationError("season standings");
+  }
+
+  async listWeeklyTeamResults(
+    seasonYear: number,
+  ): Promise<WeeklyTeamResult[]> {
+    void seasonYear;
+    throw new UnsupportedDummyStorageOperationError("weekly team results");
   }
 
   async listMatchupOverrides(

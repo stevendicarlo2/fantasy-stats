@@ -3,6 +3,8 @@ import { z } from "zod";
 import type {
   MigrationResult,
   ReadOnlyQueryResult,
+  SeasonStanding,
+  WeeklyTeamResult,
 } from "./database-provider";
 
 export const migrationResultSchema: z.ZodType<MigrationResult> = z.object({
@@ -51,3 +53,32 @@ export const readOnlyQueryResultSchema: z.ZodType<ReadOnlyQueryResult> = z
       }
     });
   });
+
+export const seasonStandingSchema: z.ZodType<SeasonStanding> = z.object({
+  seasonYear: z.number().int(),
+  franchiseId: z.uuid(),
+  teamName: z.string().trim().min(1).nullable(),
+  ownerName: z.string().trim().min(1).nullable(),
+  weeksPlayed: z.number().int().nonnegative(),
+  totalNascarPoints: z.number(),
+  totalHeadToHeadBonus: z.number(),
+  totalAdjustedNascarPoints: z.number(),
+  qualificationRank: z.number().int().positive(),
+});
+
+export const weeklyTeamResultSchema: z.ZodType<WeeklyTeamResult> = z.object({
+  seasonYear: z.number().int(),
+  matchupId: z.uuid(),
+  week: z.number().int().positive(),
+  phase: z.enum(["regular", "playoff", "consolation"]),
+  franchiseId: z.uuid(),
+  teamName: z.string().trim().min(1).nullable(),
+  ownerName: z.string().trim().min(1).nullable(),
+  opponentFranchiseId: z.uuid().nullable(),
+  opponentTeamName: z.string().trim().min(1).nullable(),
+  effectiveScore: z.number(),
+  scoreAdjustment: z.number(),
+  nascarPoints: z.number(),
+  headToHeadBonus: z.number().nullable(),
+  adjustedNascarPoints: z.number().nullable(),
+});

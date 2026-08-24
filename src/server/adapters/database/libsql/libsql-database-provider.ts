@@ -19,7 +19,11 @@ import type {
   ReadOnlyQueryResult,
   StartImportRunInput,
 } from "@/application/ports/database-provider";
-import { readOnlyQueryResultSchema } from "@/application/ports/schemas";
+import {
+  readOnlyQueryResultSchema,
+  seasonStandingSchema,
+  weeklyTeamResultSchema,
+} from "@/application/ports/schemas";
 import {
   franchiseNameSchema,
   franchiseSchema,
@@ -837,6 +841,86 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
     seasonYear: number,
   ): Promise<SeasonImportSnapshot | null> {
     return loadSeasonSnapshot(this.client, seasonYear);
+  }
+
+  async listSeasonStandings(seasonYear: number) {
+    const result = await this.client.execute({
+      sql: `
+        SELECT
+          standings.season_year AS seasonYear,
+          standings.franchise_id AS franchiseId,
+          names.team_name AS teamName,
+          franchises.owner_name AS ownerName,
+          standings.weeks_played AS weeksPlayed,
+          standings.total_nascar_points AS totalNascarPoints,
+          standings.total_head_to_head_bonus AS totalHeadToHeadBonus,
+          standings.total_adjusted_nascar_points
+            AS totalAdjustedNascarPoints,
+          standings.qualification_rank AS qualificationRank
+        FROM regular_season_anp_standings AS standings
+        INNER JOIN franchises
+          ON franchises.id = standings.franchise_id
+        LEFT JOIN (
+          SELECT franchise_id, MIN(name) AS team_name
+          FROM franchise_names
+          GROUP BY franchise_id
+        ) AS names ON names.franchise_id = standings.franchise_id
+        WHERE standings.season_year = ?
+        ORDER BY
+          standings.qualification_rank,
+          standings.total_adjusted_nascar_points DESC,
+          standings.franchise_id
+      `,
+      args: [seasonYear],
+    });
+
+    return result.rows.map((row) => seasonStandingSchema.parse(row));
+  }
+
+  async listWeeklyTeamResults(seasonYear: number) {
+    const result = await this.client.execute({
+      sql: `
+        SELECT
+          results.season_year AS seasonYear,
+          results.matchup_id AS matchupId,
+          results.week,
+          results.phase,
+          results.franchise_id AS franchiseId,
+          team_names.team_name AS teamName,
+          franchises.owner_name AS ownerName,
+          results.opponent_franchise_id AS opponentFranchiseId,
+          opponent_names.team_name AS opponentTeamName,
+          results.effective_score AS effectiveScore,
+          results.score_adjustment AS scoreAdjustment,
+          results.nascar_points AS nascarPoints,
+          results.head_to_head_bonus AS headToHeadBonus,
+          results.adjusted_nascar_points AS adjustedNascarPoints
+        FROM weekly_adjusted_nascar_points AS results
+        INNER JOIN franchises
+          ON franchises.id = results.franchise_id
+        LEFT JOIN (
+          SELECT franchise_id, MIN(name) AS team_name
+          FROM franchise_names
+          GROUP BY franchise_id
+        ) AS team_names
+          ON team_names.franchise_id = results.franchise_id
+        LEFT JOIN (
+          SELECT franchise_id, MIN(name) AS team_name
+          FROM franchise_names
+          GROUP BY franchise_id
+        ) AS opponent_names
+          ON opponent_names.franchise_id = results.opponent_franchise_id
+        WHERE results.season_year = ?
+        ORDER BY
+          results.week,
+          results.matchup_id,
+          results.effective_score DESC,
+          results.franchise_id
+      `,
+      args: [seasonYear],
+    });
+
+    return result.rows.map((row) => weeklyTeamResultSchema.parse(row));
   }
 
   async listMatchupOverrides(

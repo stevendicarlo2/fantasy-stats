@@ -106,6 +106,8 @@ describe("SeasonImportService", () => {
     failImportRun,
     getSeasonImportSnapshot,
     listImportRuns: vi.fn(),
+    listSeasonStandings: vi.fn(),
+    listWeeklyTeamResults: vi.fn(),
     listMatchupOverrides: vi.fn(),
     saveMatchupOverride: vi.fn(),
     deleteMatchupOverride: vi.fn(),
