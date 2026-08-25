@@ -26,6 +26,7 @@ import {
 } from "@/application/ports/schemas";
 import {
   franchiseNameSchema,
+  franchiseDisplayNameSchema,
   franchiseSchema,
   importedMatchupScoreSchema,
   importRunSchema,
@@ -38,6 +39,7 @@ import {
 } from "@/domain/schemas";
 import type {
   CanonicalId,
+  FranchiseDisplayName,
   ImportRun,
   MatchupOverride,
   SeasonImportSnapshot,
@@ -693,6 +695,55 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
     return result.rows.map((row) => sourceMappingSchema.parse(row));
   }
 
+  async listFranchiseDisplayNames(): Promise<FranchiseDisplayName[]> {
+    const result = await this.client.execute(`
+      SELECT
+        franchise_id AS franchiseId,
+        display_name AS displayName
+      FROM franchise_display_names
+      ORDER BY display_name, franchise_id
+    `);
+
+    return result.rows.map((row) =>
+      franchiseDisplayNameSchema.parse(row),
+    );
+  }
+
+  async saveFranchiseDisplayName(
+    displayName: FranchiseDisplayName,
+  ): Promise<FranchiseDisplayName> {
+    const validatedDisplayName =
+      franchiseDisplayNameSchema.parse(displayName);
+    const franchise = await this.client.execute({
+      sql: "SELECT id FROM franchises WHERE id = ?",
+      args: [validatedDisplayName.franchiseId],
+    });
+
+    if (franchise.rows.length !== 1) {
+      throw new LibSqlDatabaseError(
+        "A display name must target an imported franchise",
+      );
+    }
+
+    await this.client.execute({
+      sql: `
+        INSERT INTO franchise_display_names (
+          franchise_id,
+          display_name
+        )
+        VALUES (?, ?)
+        ON CONFLICT(franchise_id) DO UPDATE SET
+          display_name = excluded.display_name
+      `,
+      args: [
+        validatedDisplayName.franchiseId,
+        validatedDisplayName.displayName,
+      ],
+    });
+
+    return validatedDisplayName;
+  }
+
   async startImportRun(input: StartImportRunInput): Promise<ImportRun> {
     const importRun = importRunSchema.parse({
       ...input,
@@ -850,6 +901,7 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
           standings.season_year AS seasonYear,
           standings.franchise_id AS franchiseId,
           names.team_name AS teamName,
+          display_names.display_name AS displayName,
           franchises.owner_name AS ownerName,
           standings.weeks_played AS weeksPlayed,
           standings.total_nascar_points AS totalNascarPoints,
@@ -865,6 +917,8 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
           FROM franchise_names
           GROUP BY franchise_id
         ) AS names ON names.franchise_id = standings.franchise_id
+        LEFT JOIN franchise_display_names AS display_names
+          ON display_names.franchise_id = standings.franchise_id
         WHERE standings.season_year = ?
         ORDER BY
           standings.qualification_rank,
@@ -892,6 +946,7 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
           results.phase,
           results.franchise_id AS franchiseId,
           team_names.team_name AS teamName,
+          display_names.display_name AS displayName,
           franchises.owner_name AS ownerName,
           results.opponent_franchise_id AS opponentFranchiseId,
           opponent_names.team_name AS opponentTeamName,
@@ -910,6 +965,8 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
           GROUP BY franchise_id
         ) AS team_names
           ON team_names.franchise_id = results.franchise_id
+        LEFT JOIN franchise_display_names AS display_names
+          ON display_names.franchise_id = results.franchise_id
         LEFT JOIN (
           SELECT franchise_id, MIN(name) AS team_name
           FROM franchise_names

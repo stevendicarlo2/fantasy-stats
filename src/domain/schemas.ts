@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type {
   Franchise,
+  FranchiseDisplayName,
   FranchiseName,
   ImportedMatchupScore,
   ImportRun,
@@ -53,6 +54,12 @@ export const franchiseNameSchema: z.ZodType<FranchiseName> = z.object({
   franchiseId: canonicalIdSchema,
   name: nonEmptyTextSchema,
 });
+
+export const franchiseDisplayNameSchema: z.ZodType<FranchiseDisplayName> =
+  z.object({
+    franchiseId: canonicalIdSchema,
+    displayName: nonEmptyTextSchema,
+  });
 
 export const matchupSchema: z.ZodType<Matchup> = z
   .object({

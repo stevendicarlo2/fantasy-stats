@@ -17,6 +17,10 @@ interface AdjustmentPageProps {
   params: Promise<{ year: string }>;
 }
 
+function franchiseLabel(result: WeeklyTeamResult) {
+  return result.displayName ?? result.ownerName ?? "Unknown person";
+}
+
 async function loadAdjustmentPage(yearValue: string) {
   const year = Number(yearValue);
 
@@ -49,8 +53,7 @@ async function loadAdjustmentPage(yearValue: string) {
 
         return {
           franchiseId: result.franchiseId,
-          teamLabel:
-            result.teamName ?? result.ownerName ?? "Unknown franchise",
+          teamLabel: franchiseLabel(result),
           importedScore:
             result.effectiveScore - result.scoreAdjustment,
           existingAdjustment:
@@ -62,10 +65,8 @@ async function loadAdjustmentPage(yearValue: string) {
       (matchup) => ({
         id: matchup.id,
         week: matchup.week,
-        label: `${matchup.home.teamName ?? matchup.home.ownerName ?? "Unknown home team"} vs. ${
-          matchup.away?.teamName ??
-          matchup.away?.ownerName ??
-          "Bye"
+        label: `${franchiseLabel(matchup.home)} vs. ${
+          matchup.away ? franchiseLabel(matchup.away) : "Bye"
         }`,
         home: createCandidate(matchup.home),
         away: matchup.away ? createCandidate(matchup.away) : null,
@@ -95,16 +96,14 @@ async function loadAdjustmentPage(yearValue: string) {
           id: adjustment.id,
           week: target?.matchup.week ?? 0,
           matchupLabel: target
-            ? `${target.matchup.home.teamName ?? target.matchup.home.ownerName ?? "Unknown home team"} vs. ${
-                target.matchup.away?.teamName ??
-                target.matchup.away?.ownerName ??
-                "Bye"
+            ? `${franchiseLabel(target.matchup.home)} vs. ${
+                target.matchup.away
+                  ? franchiseLabel(target.matchup.away)
+                  : "Bye"
               }`
             : "Unknown matchup",
           teamLabel:
-            target?.result.teamName ??
-            target?.result.ownerName ??
-            "Unknown franchise",
+            target ? franchiseLabel(target.result) : "Unknown franchise",
           scoreAdjustment: adjustment.scoreAdjustment,
           reason: adjustment.reason,
         };

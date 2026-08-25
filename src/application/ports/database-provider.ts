@@ -1,5 +1,6 @@
 import type {
   CanonicalId,
+  FranchiseDisplayName,
   ImportOperation,
   ImportRun,
   IsoDateTime,
@@ -50,6 +51,7 @@ export interface SeasonStanding {
   seasonYear: number;
   franchiseId: CanonicalId;
   teamName: string | null;
+  displayName: string | null;
   ownerName: string | null;
   weeksPlayed: number;
   totalNascarPoints: number;
@@ -66,6 +68,7 @@ export interface WeeklyTeamResult {
   phase: MatchupPhase;
   franchiseId: CanonicalId;
   teamName: string | null;
+  displayName: string | null;
   ownerName: string | null;
   opponentFranchiseId: CanonicalId | null;
   opponentTeamName: string | null;
@@ -80,6 +83,10 @@ export interface DatabaseProvider {
   runMigrations(): Promise<MigrationResult>;
 
   listSourceMappings(provider: string): Promise<SourceMapping[]>;
+  listFranchiseDisplayNames(): Promise<FranchiseDisplayName[]>;
+  saveFranchiseDisplayName(
+    displayName: FranchiseDisplayName,
+  ): Promise<FranchiseDisplayName>;
 
   startImportRun(input: StartImportRunInput): Promise<ImportRun>;
   commitSeasonImport(input: CommitSeasonImportInput): Promise<ImportRun>;

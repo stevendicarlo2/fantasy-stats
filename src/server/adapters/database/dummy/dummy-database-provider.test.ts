@@ -122,6 +122,15 @@ describe("DummyDatabaseProvider", () => {
     await expect(
       provider.listMatchupOverrides(ids.season),
     ).resolves.toEqual([matchupOverride]);
+    await expect(
+      provider.saveFranchiseDisplayName({
+        franchiseId: ids.home,
+        displayName: "Person One",
+      }),
+    ).resolves.toEqual({
+      franchiseId: ids.home,
+      displayName: "Person One",
+    });
   });
 
   it("rejects unsupported arbitrary SQL explicitly", async () => {

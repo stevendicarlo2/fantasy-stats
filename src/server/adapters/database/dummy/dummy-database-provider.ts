@@ -11,11 +11,13 @@ import type {
 } from "@/application/ports/database-provider";
 import {
   importRunSchema,
+  franchiseDisplayNameSchema,
   matchupOverrideSchema,
   seasonImportSnapshotSchema,
 } from "@/domain/schemas";
 import type {
   CanonicalId,
+  FranchiseDisplayName,
   ImportRun,
   MatchupOverride,
   SeasonImportSnapshot,
@@ -37,6 +39,10 @@ export class DummyDatabaseProvider implements DatabaseProvider {
   private readonly snapshots = new Map<number, SeasonImportSnapshot>();
   private readonly importRuns = new Map<CanonicalId, ImportRun>();
   private readonly overrides = new Map<CanonicalId, MatchupOverride>();
+  private readonly displayNames = new Map<
+    CanonicalId,
+    FranchiseDisplayName
+  >();
 
   async runMigrations() {
     return { appliedMigrations: [] };
@@ -59,6 +65,34 @@ export class DummyDatabaseProvider implements DatabaseProvider {
     }
 
     return copy([...mappings.values()]);
+  }
+
+  async listFranchiseDisplayNames(): Promise<FranchiseDisplayName[]> {
+    return copy([...this.displayNames.values()]);
+  }
+
+  async saveFranchiseDisplayName(
+    displayName: FranchiseDisplayName,
+  ): Promise<FranchiseDisplayName> {
+    const validatedDisplayName =
+      franchiseDisplayNameSchema.parse(displayName);
+    const franchiseExists = [...this.snapshots.values()].some((snapshot) =>
+      snapshot.franchises.some(
+        (franchise) => franchise.id === validatedDisplayName.franchiseId,
+      ),
+    );
+
+    if (!franchiseExists) {
+      throw new SafeOperationalError(
+        "A display name must target an imported franchise",
+      );
+    }
+
+    this.displayNames.set(
+      validatedDisplayName.franchiseId,
+      copy(validatedDisplayName),
+    );
+    return copy(validatedDisplayName);
   }
 
   async startImportRun(input: StartImportRunInput): Promise<ImportRun> {

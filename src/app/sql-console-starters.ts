@@ -24,19 +24,15 @@ ORDER BY year DESC;`,
     statement: `SELECT
   standings.season_year,
   standings.qualification_rank,
-  names.team_name,
+  display_names.display_name,
   standings.franchise_id,
   standings.weeks_played,
   standings.total_nascar_points,
   standings.total_head_to_head_bonus,
   standings.total_adjusted_nascar_points
 FROM regular_season_anp_standings AS standings
-LEFT JOIN (
-  SELECT franchise_id, MIN(name) AS team_name
-  FROM franchise_names
-  GROUP BY franchise_id
-) AS names
-  ON names.franchise_id = standings.franchise_id
+LEFT JOIN franchise_display_names AS display_names
+  ON display_names.franchise_id = standings.franchise_id
 WHERE standings.season_year = ?
 ORDER BY standings.qualification_rank;`,
     parameters: "[2017]",

@@ -17,6 +17,12 @@ const databaseProviderContract = {
   async listSourceMappings() {
     return [];
   },
+  async listFranchiseDisplayNames() {
+    return [];
+  },
+  async saveFranchiseDisplayName(displayName) {
+    return displayName;
+  },
   async startImportRun(input) {
     return {
       ...input,

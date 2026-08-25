@@ -43,3 +43,7 @@ additive corrections are managed from the season page; see
 
 Advanced historical exploration is available through the web
 [read-only SQL console](docs/sql-console.md).
+
+Canonical franchises may also have private, manually curated
+[person display names](docs/franchise-display-names.md) that remain separate
+from changing ESPN team names.

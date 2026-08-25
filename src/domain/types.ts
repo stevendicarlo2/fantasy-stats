@@ -26,6 +26,11 @@ export interface FranchiseName {
   name: string;
 }
 
+export interface FranchiseDisplayName {
+  franchiseId: CanonicalId;
+  displayName: string;
+}
+
 export type MatchupPhase = "regular" | "playoff" | "consolation";
 
 export interface Matchup {

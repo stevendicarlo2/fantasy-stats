@@ -15,8 +15,8 @@ function formatPoints(value: number | null) {
   return value === null ? "--" : value.toFixed(2);
 }
 
-function teamLabel(result: WeeklyTeamResult) {
-  return result.teamName ?? result.ownerName ?? "Unknown franchise";
+function franchiseLabel(result: WeeklyTeamResult) {
+  return result.displayName ?? result.ownerName ?? "Unknown person";
 }
 
 async function loadSeason(yearValue: string) {
@@ -114,8 +114,7 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
             <thead>
               <tr>
                 <th>Rank</th>
-                <th>Team</th>
-                <th>Owner</th>
+                <th>Person</th>
                 <th>Weeks</th>
                 <th>NP</th>
                 <th>H2H bonus</th>
@@ -126,8 +125,11 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
               {stats.standings.map((standing) => (
                 <tr key={standing.franchiseId}>
                   <td>{standing.qualificationRank}</td>
-                  <td>{standing.teamName ?? "Unknown team"}</td>
-                  <td>{standing.ownerName ?? "--"}</td>
+                  <td>
+                    {standing.displayName ??
+                      standing.ownerName ??
+                      "Unknown person"}
+                  </td>
                   <td>{standing.weeksPlayed}</td>
                   <td>{formatPoints(standing.totalNascarPoints)}</td>
                   <td>{formatPoints(standing.totalHeadToHeadBonus)}</td>
@@ -163,9 +165,9 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
                     <article className="matchup-card" key={matchup.id}>
                       <header>
                         <strong>
-                          {teamLabel(matchup.home)} vs.{" "}
+                          {franchiseLabel(matchup.home)} vs.{" "}
                           {matchup.away
-                            ? teamLabel(matchup.away)
+                            ? franchiseLabel(matchup.away)
                             : "Bye"}
                         </strong>
                         <span className={`phase ${matchup.phase}`}>
@@ -177,7 +179,7 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
                           <thead>
                             <tr>
                               <th>Side</th>
-                              <th>Team</th>
+                              <th>Franchise</th>
                               <th>Score</th>
                               <th>Adjustment</th>
                               <th>NP</th>
@@ -189,7 +191,7 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
                             {results.map((result) => (
                               <tr key={result.franchiseId}>
                                 <td>{result.matchupSide}</td>
-                                <td>{teamLabel(result)}</td>
+                                <td>{franchiseLabel(result)}</td>
                                 <td>
                                   {formatPoints(result.effectiveScore)}
                                 </td>

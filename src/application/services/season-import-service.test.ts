@@ -101,6 +101,8 @@ describe("SeasonImportService", () => {
   const database = {
     runMigrations: vi.fn(),
     listSourceMappings,
+    listFranchiseDisplayNames: vi.fn(),
+    saveFranchiseDisplayName: vi.fn(),
     startImportRun,
     commitSeasonImport,
     failImportRun,

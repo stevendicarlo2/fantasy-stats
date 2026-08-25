@@ -142,6 +142,7 @@ describe("libSQL database provider", () => {
         "0002_scoring_views.sql",
         "0003_support_postseason_byes.sql",
         "0004_scoring_views_with_byes.sql",
+        "0005_franchise_display_names.sql",
       ],
     });
     await expect(provider.runMigrations()).resolves.toEqual({
@@ -198,10 +199,15 @@ describe("libSQL database provider", () => {
   it("returns typed season standings and weekly scoring results", async () => {
     await provider.runMigrations();
     await importSnapshot();
+    await provider.saveFranchiseDisplayName({
+      franchiseId: ids.home,
+      displayName: "Person One",
+    });
 
     await expect(provider.listSeasonStandings(2025)).resolves.toEqual([
       expect.objectContaining({
         franchiseId: ids.home,
+        displayName: "Person One",
         teamName: "Home Team",
         weeksPlayed: 1,
         totalNascarPoints: 2,
@@ -221,6 +227,7 @@ describe("libSQL database provider", () => {
         matchupId: ids.matchup,
         matchupSide: "home",
         franchiseId: ids.home,
+        displayName: "Person One",
         opponentFranchiseId: ids.away,
         effectiveScore: 101.25,
         nascarPoints: 2,
@@ -237,6 +244,27 @@ describe("libSQL database provider", () => {
         headToHeadBonus: 0,
         adjustedNascarPoints: 1,
       }),
+    ]);
+  });
+
+  it("persists application-owned franchise display names", async () => {
+    await provider.runMigrations();
+    await importSnapshot();
+
+    await expect(
+      provider.saveFranchiseDisplayName({
+        franchiseId: ids.home,
+        displayName: "Person One",
+      }),
+    ).resolves.toEqual({
+      franchiseId: ids.home,
+      displayName: "Person One",
+    });
+    await expect(provider.listFranchiseDisplayNames()).resolves.toEqual([
+      {
+        franchiseId: ids.home,
+        displayName: "Person One",
+      },
     ]);
   });
 
