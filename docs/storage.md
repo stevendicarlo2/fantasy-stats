@@ -15,21 +15,20 @@ Selection precedence is:
 
 1. CLI `--storage`
 2. `FANTASY_STATS_STORAGE` in `.env.local`
-3. `dummy`
+3. `local`
 
 The web application does not accept dummy storage because its state would be
-lost between requests. Set `FANTASY_STATS_STORAGE=local` or
-`FANTASY_STATS_STORAGE=turso` before starting the development server.
+lost between requests. With no explicit selection it uses local storage.
 
 ## Dummy storage
 
 ```bash
-npm run import-season --year=2017
+npm run import-season --year=2017 --storage=dummy
 ```
 
-Dummy storage is the default. It keeps canonical snapshots, source mappings,
-import audits, and matchup overrides in memory for the lifetime of the process.
-It supports the season import service but does not support arbitrary SQL.
+Dummy storage keeps canonical snapshots, source mappings, import audits, and
+matchup overrides in memory for the lifetime of the process. It supports the
+season import service but does not support arbitrary SQL.
 
 The command prints canonical franchise, matchup, and score counts so ingestion
 can be verified without a real database. Nothing is persisted after the
@@ -39,11 +38,11 @@ import.
 ## Local storage
 
 ```bash
-npm run import-season --year=2017 --storage=local
-npm run refresh-season --year=2017 --storage=local
+npm run import-season --year=2017
+npm run refresh-season --year=2017
 ```
 
-Local mode uses the complete libSQL provider and defaults to the gitignored
+Local mode is the default. It uses the complete libSQL provider and defaults to the gitignored
 `.data/fantasy-stats.db` file. Override the path with:
 
 ```bash

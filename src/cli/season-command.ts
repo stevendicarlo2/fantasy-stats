@@ -106,7 +106,7 @@ export function parseSeasonCommand(arguments_: string[]): SeasonCommand {
     );
   }
 
-  const storage = options.get("--storage") ?? "dummy";
+  const storage = options.get("--storage") ?? "local";
 
   if (!["dummy", "local", "turso"].includes(storage)) {
     throw new SeasonCommandUsageError(

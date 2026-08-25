@@ -25,9 +25,9 @@ npm run import-season --year=2017
 npm run refresh-season --year=2017
 ```
 
-Imports use nonpersistent dummy storage by default, allowing ESPN ingestion to
-be tested without Turso. Select persistent local or Turso storage explicitly;
-see [storage providers](docs/storage.md).
+Imports use persistent local storage by default. Explicit dummy storage remains
+available for isolated ingestion checks, and Turso can be selected for remote
+persistence; see [storage providers](docs/storage.md).
 
 To use the web import dashboard, configure persistent storage in `.env.local`:
 

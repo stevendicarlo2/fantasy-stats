@@ -26,8 +26,8 @@ describe("parseSeasonCommand", () => {
     expect(parseSeasonCommand(["import", "--year", "2017"])).toEqual({
       operation: "import",
       year: 2017,
-      storage: "dummy",
-      databaseFile: undefined,
+      storage: "local",
+      databaseFile: ".data/fantasy-stats.db",
     });
     expect(
       parseSeasonCommand([
@@ -76,6 +76,8 @@ describe("parseSeasonCommand", () => {
         "import",
         "--year",
         "2025",
+        "--storage",
+        "dummy",
         "--database-file",
         "test.db",
       ]),

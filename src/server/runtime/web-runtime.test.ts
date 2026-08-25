@@ -36,14 +36,13 @@ describe("createWebRuntime", () => {
     ).rejects.toThrow(WebStorageConfigurationError);
   });
 
-  it("creates and migrates persistent local storage", async () => {
+  it("defaults to persistent local storage", async () => {
     const directory = await mkdtemp(
       join(tmpdir(), "fantasy-stats-web-runtime-"),
     );
     temporaryDirectories.push(directory);
     const runtime = await createWebRuntime({
       ...espnEnvironment,
-      FANTASY_STATS_STORAGE: "local",
       FANTASY_STATS_LOCAL_DATABASE_FILE: join(directory, "database.db"),
     });
 

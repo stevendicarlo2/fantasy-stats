@@ -38,7 +38,7 @@ export class WebStorageConfigurationError extends SafeOperationalError {
 function getStorageSelection(
   environment: EnvironmentValues,
 ): StorageSelection {
-  const storage = environment.FANTASY_STATS_STORAGE ?? "dummy";
+  const storage = environment.FANTASY_STATS_STORAGE ?? "local";
 
   if (storage === "dummy") {
     throw new WebStorageConfigurationError(

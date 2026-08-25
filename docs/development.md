@@ -22,7 +22,7 @@ file.
 
 | Variable | Purpose |
 | --- | --- |
-| `FANTASY_STATS_STORAGE` | Default `dummy`, `local`, or `turso` provider |
+| `FANTASY_STATS_STORAGE` | `local` (default), `dummy`, or `turso` provider |
 | `FANTASY_STATS_LOCAL_DATABASE_FILE` | Local libSQL file path |
 | `TURSO_DATABASE_URL` | Turso/libSQL database URL |
 | `TURSO_AUTH_TOKEN` | Turso authentication token |
@@ -42,17 +42,16 @@ logs, or documentation.
 
 ## Season import CLI
 
-Import and validate a season with the default in-memory dummy storage:
+Import and persist a season with the default local storage:
 
 ```bash
 npm run import-season --year=2017
 ```
 
-Use persistent local storage:
+Select dummy storage explicitly for a nonpersistent ingestion check:
 
 ```bash
-npm run import-season --year=2017 --storage=local
-npm run refresh-season --year=2017 --storage=local
+npm run import-season --year=2017 --storage=dummy
 ```
 
 The command loads `.env.local`, uses the same season import service as the web
