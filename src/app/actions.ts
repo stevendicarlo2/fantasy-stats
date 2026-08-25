@@ -10,6 +10,10 @@ import {
   executeImportAction,
   type ImportActionState,
 } from "./import-action-logic";
+import {
+  executeSqlConsoleAction,
+  type SqlConsoleActionState,
+} from "./sql-console-action-logic";
 import { getWebRuntime } from "@/server/runtime/web-runtime";
 
 export async function runSeasonAction(
@@ -43,4 +47,14 @@ export async function runAdjustmentAction(
   }
 
   return result;
+}
+
+export async function runSqlConsoleAction(
+  _previousState: SqlConsoleActionState,
+  formData: FormData,
+): Promise<SqlConsoleActionState> {
+  return executeSqlConsoleAction(formData, async () => {
+    const runtime = await getWebRuntime();
+    return runtime.sqlConsoleService;
+  });
 }

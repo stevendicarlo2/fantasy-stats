@@ -111,6 +111,12 @@ p {
   text-transform: capitalize;
 }
 
+.hero-actions {
+  display: grid;
+  justify-items: end;
+  gap: 0.75rem;
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
@@ -158,6 +164,75 @@ p {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
   gap: 1.5rem;
+}
+
+.sql-console-layout {
+  display: grid;
+  grid-template-columns: minmax(14rem, 0.35fr) minmax(0, 1fr);
+  gap: 1.5rem;
+}
+
+.starter-panel {
+  align-self: start;
+}
+
+.starter-list,
+.sql-form {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.starter-list button {
+  width: 100%;
+  text-align: left;
+}
+
+.sql-editor-panel {
+  min-width: 0;
+}
+
+.sql-form label {
+  color: #dce7e1;
+  font-weight: 650;
+}
+
+.sql-editor,
+.parameter-editor {
+  font-family:
+    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  line-height: 1.55;
+  tab-size: 2;
+}
+
+.field-help {
+  margin: -0.25rem 0 0.5rem;
+  font-size: 0.85rem;
+}
+
+.sql-results-panel {
+  grid-column: 1 / -1;
+}
+
+.sql-results {
+  max-height: 36rem;
+  margin-top: 1rem;
+  border: 1px solid #27483a;
+  border-radius: 0.75rem;
+}
+
+.sql-results th {
+  position: sticky;
+  top: 0;
+  background: #0b2118;
+}
+
+.sql-results td {
+  max-width: 28rem;
+  font-family:
+    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .adjustment-form {
@@ -425,11 +500,20 @@ code {
 @media (max-width: 800px) {
   .hero.compact,
   .dashboard-grid,
-  .adjustment-layout {
+  .adjustment-layout,
+  .sql-console-layout {
     grid-template-columns: 1fr;
+  }
+
+  .hero-actions {
+    justify-items: start;
   }
 
   .storage-badge {
     width: fit-content;
+  }
+
+  .sql-results-panel {
+    grid-column: auto;
   }
 }

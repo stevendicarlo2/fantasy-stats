@@ -40,3 +40,6 @@ and can import or refresh completed seasons. Select an imported season to view
 its regular-season ANP standings and week-by-week scoring details. Manual
 additive corrections are managed from the season page; see
 [matchup score adjustments](docs/matchup-adjustments.md).
+
+Advanced historical exploration is available through the web
+[read-only SQL console](docs/sql-console.md).

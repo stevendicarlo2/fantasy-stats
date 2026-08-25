@@ -62,9 +62,14 @@ export default async function Home() {
               persisted audit results.
             </p>
           </div>
-          <div className="storage-badge">
-            <span>Storage</span>
-            <strong>{runtime.storage.kind}</strong>
+          <div className="hero-actions">
+            <Link className="page-action" href="/sql">
+              Open SQL console
+            </Link>
+            <div className="storage-badge">
+              <span>Storage</span>
+              <strong>{runtime.storage.kind}</strong>
+            </div>
           </div>
         </header>
 
