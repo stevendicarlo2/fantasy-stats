@@ -7,6 +7,8 @@ import type { WeeklyTeamResult } from "@/application/ports/database-provider";
 import type { SeasonMatchupResult } from "@/application/services/season-stats-service";
 import { getWebRuntime } from "@/server/runtime/web-runtime";
 
+import { SeasonAnalyticsDashboard } from "./season-analytics-dashboard";
+
 interface SeasonPageProps {
   params: Promise<{ year: string }>;
 }
@@ -57,7 +59,7 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
 
   if (pageData.status === "error") {
     return (
-      <main className="shell">
+      <main className="shell season-shell">
         <Link className="back-link" href="/">
           &larr; Season imports
         </Link>
@@ -80,7 +82,7 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
   }
 
   return (
-    <main className="shell">
+    <main className="shell season-shell">
       <Link className="back-link" href="/">
         &larr; Season imports
       </Link>
@@ -102,48 +104,11 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
         </Link>
       </header>
 
-      <section className="panel">
-        <p className="panel-kicker">Playoff qualification</p>
-        <h2>Regular-season ANP standings</h2>
-        <p>
-          Rank is based only on cumulative regular-season Adjusted NASCAR
-          Points. ESPN playoff seeds are not used.
-        </p>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Person</th>
-                <th>Weeks</th>
-                <th>NP</th>
-                <th>H2H bonus</th>
-                <th>ANP</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.standings.map((standing) => (
-                <tr key={standing.franchiseId}>
-                  <td>{standing.qualificationRank}</td>
-                  <td>
-                    {standing.displayName ??
-                      standing.ownerName ??
-                      "Unknown person"}
-                  </td>
-                  <td>{standing.weeksPlayed}</td>
-                  <td>{formatPoints(standing.totalNascarPoints)}</td>
-                  <td>{formatPoints(standing.totalHeadToHeadBonus)}</td>
-                  <td>
-                    <strong>
-                      {formatPoints(standing.totalAdjustedNascarPoints)}
-                    </strong>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <SeasonAnalyticsDashboard
+        records={stats.analytics}
+        regularSeasonStartWeek={stats.regularSeasonStartWeek}
+        regularSeasonEndWeek={stats.regularSeasonEndWeek}
+      />
 
       <section className="weekly-section">
         <div>

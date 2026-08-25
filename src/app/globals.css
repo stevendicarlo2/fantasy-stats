@@ -148,6 +148,458 @@ p {
   margin-top: 1rem;
 }
 
+.season-shell {
+  width: 100%;
+  padding: 1rem clamp(1rem, 2vw, 2rem) 3rem;
+}
+
+.season-shell .back-link {
+  margin-bottom: 0.5rem;
+}
+
+.season-shell .season-hero {
+  min-height: auto;
+  margin: 0 0 0.75rem;
+}
+
+.season-shell .season-hero h1 {
+  max-width: none;
+  font-size: clamp(2rem, 4vw, 3.25rem);
+}
+
+.season-shell .season-hero .eyebrow {
+  margin-bottom: 0.35rem;
+}
+
+.season-shell .season-hero .summary {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.analytics-section {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.analytics-heading {
+  order: 0;
+}
+
+.analytics-table-panel {
+  order: 1;
+}
+
+.analytics-filters {
+  order: 2;
+}
+
+.analytics-chart-panel {
+  order: 3;
+}
+
+.analytics-heading,
+.analytics-subheading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.analytics-heading p,
+.analytics-subheading p {
+  max-width: 48rem;
+  margin-bottom: 0;
+}
+
+.analytics-heading h2,
+.analytics-subheading h2 {
+  margin-bottom: 0;
+  font-size: 1.35rem;
+}
+
+.analytics-heading .panel-kicker,
+.analytics-subheading .panel-kicker {
+  margin-bottom: 0.25rem;
+}
+
+.analytics-subheading > span {
+  color: #91a99e;
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+.analytics-filters {
+  display: grid;
+  position: relative;
+  grid-template-columns:
+    minmax(28rem, 2.5fr) minmax(13rem, 1fr)
+    repeat(3, minmax(9rem, 0.75fr));
+  gap: 0.65rem;
+  margin-top: 1.7rem;
+}
+
+.filter-group {
+  min-width: 0;
+  margin: 0;
+  padding: 0.55rem 0.7rem 0.7rem;
+  border: 1px solid #27483a;
+  border-radius: 1rem;
+  background: rgb(9 27 20 / 82%);
+}
+
+.filter-group legend {
+  padding: 0 0.4rem;
+  color: #dce7e1;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
+}
+
+button.filter-link {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #9aebbe;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+button.filter-chip {
+  padding: 0.25rem 0.55rem;
+  border-color: #315245;
+  border-radius: 999px;
+  background: transparent;
+  color: #a8bdb3;
+  font-size: 0.78rem;
+}
+
+button.filter-chip.selected {
+  border-color: #72d9a5;
+  background: rgb(45 125 86 / 28%);
+  color: #baf1d3;
+}
+
+.week-range-labels {
+  display: flex;
+  justify-content: space-between;
+  color: #baf1d3;
+  font-size: 0.75rem;
+}
+
+.week-range-slider {
+  position: relative;
+  height: 2rem;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.week-range-track {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.4rem;
+  left: 0.4rem;
+  height: 0.3rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    #315245 0 var(--range-start),
+    #72d9a5 var(--range-start) var(--range-end),
+    #315245 var(--range-end) 100%
+  );
+}
+
+.week-range-slider input[type="range"] {
+  position: absolute;
+  inset: 0;
+  height: 2rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+}
+
+.week-range-slider .range-start {
+  z-index: 2;
+}
+
+.week-range-slider .range-end {
+  z-index: 3;
+}
+
+.week-range-slider input[type="range"]::-webkit-slider-runnable-track {
+  height: 0.3rem;
+  background: transparent;
+}
+
+.week-range-slider input[type="range"]::-webkit-slider-thumb {
+  width: 1rem;
+  height: 1rem;
+  margin-top: -0.35rem;
+  border: 2px solid #07130f;
+  border-radius: 50%;
+  appearance: none;
+  background: #72d9a5;
+  box-shadow: 0 0 0 1px #9aebbe;
+  pointer-events: none;
+}
+
+.week-range-slider input[type="range"]::-moz-range-track {
+  height: 0.3rem;
+  background: transparent;
+}
+
+.week-range-slider input[type="range"]::-moz-range-thumb {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid #07130f;
+  border-radius: 50%;
+  background: #72d9a5;
+  box-shadow: 0 0 0 1px #9aebbe;
+  pointer-events: none;
+}
+
+.segmented-control {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.segmented-control button {
+  flex: 1;
+  min-width: fit-content;
+  padding: 0.4rem 0.6rem;
+  border-color: #315245;
+  background: transparent;
+  color: #a8bdb3;
+  font-size: 0.78rem;
+}
+
+.segmented-control button.selected {
+  border-color: #72d9a5;
+  background: rgb(45 125 86 / 28%);
+  color: #baf1d3;
+}
+
+.filter-group select {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.78rem;
+}
+
+.filter-group select:disabled {
+  opacity: 0.5;
+}
+
+.filter-reset-button {
+  position: absolute;
+  top: -2.2rem;
+  right: 0;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.75rem;
+}
+
+.analytics-table-panel,
+.analytics-chart-panel {
+  min-width: 0;
+}
+
+.analytics-table-panel {
+  padding: 0.75rem;
+}
+
+.table-mode-toggle {
+  flex-wrap: nowrap;
+}
+
+.analytics-table-wrap {
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 0.55rem;
+  border: 1px solid #27483a;
+  border-radius: 0.8rem;
+  overscroll-behavior-x: none;
+}
+
+.analytics-table {
+  --total-column-width: 5.5rem;
+
+  width: max-content;
+  min-width: max-content;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  font-size: 0.82rem;
+}
+
+.analytics-total-column {
+  width: var(--total-column-width);
+}
+
+.analytics-person-column {
+  width: var(--person-column-width);
+}
+
+.analytics-team-column {
+  width: var(--team-column-width);
+}
+
+.analytics-week-column {
+  width: 4.1rem;
+}
+
+.analytics-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #0b2118;
+}
+
+.analytics-table .sticky-person {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  width: var(--person-column-width);
+  min-width: var(--person-column-width);
+  max-width: var(--person-column-width);
+  background: #0b2118;
+  white-space: nowrap;
+}
+
+.analytics-table .sticky-team {
+  position: sticky;
+  left: var(--person-column-width);
+  z-index: 3;
+  width: var(--team-column-width);
+  min-width: var(--team-column-width);
+  max-width: var(--team-column-width);
+  background: #0b2118;
+  white-space: nowrap;
+}
+
+.analytics-table .sticky-total {
+  position: sticky;
+  z-index: 3;
+  width: var(--total-column-width);
+  min-width: var(--total-column-width);
+  max-width: var(--total-column-width);
+}
+
+.analytics-table th.sticky-person,
+.analytics-table th.sticky-team,
+.analytics-table th.sticky-total {
+  z-index: 5;
+}
+
+.analytics-table tbody .sticky-person,
+.analytics-table tbody .sticky-team {
+  background: #0d241b;
+}
+
+.analytics-table .frozen-edge {
+  box-shadow: inset -3px 0 #000;
+}
+
+.analytics-week-cell {
+  min-width: 4.1rem;
+}
+
+.analytics-value-cell {
+  color: #f4f7f5;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.analytics-table tr.playoff-cutoff td {
+  border-bottom: 3px solid #000;
+}
+
+.analytics-table th,
+.analytics-table td {
+  padding: 0.25rem 0.35rem;
+  line-height: 1.2;
+}
+
+.sort-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  text-transform: inherit;
+  white-space: nowrap;
+}
+
+.sort-button span {
+  color: #72d9a5;
+  font-size: 0.62rem;
+}
+
+.chart-container {
+  width: 100%;
+  min-width: 0;
+  margin-top: 0.75rem;
+  padding: 0.75rem 0 0;
+  border: 1px solid #27483a;
+  border-radius: 0.8rem;
+  background: #0b2118;
+}
+
+.chart-container .recharts-tooltip-label,
+.chart-container .recharts-tooltip-item {
+  color: #d8e3dd !important;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.9rem;
+  padding: 0 0.75rem 0.75rem;
+  border-bottom: 1px solid #203e32;
+}
+
+.chart-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #c1d0c8;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.chart-line-sample {
+  width: 1.7rem;
+  border-top: 3px solid currentColor;
+}
+
+.chart-line-sample.anp {
+  border-top: 3px dashed currentColor;
+}
+
+.chart-line-sample.score {
+  border-top: 3px dotted currentColor;
+}
+
 .page-action {
   display: inline-flex;
   align-items: center;
@@ -515,5 +967,27 @@ code {
 
   .sql-results-panel {
     grid-column: auto;
+  }
+
+  .analytics-heading,
+  .analytics-subheading {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .analytics-subheading > span {
+    text-align: left;
+  }
+
+  .analytics-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-subheading {
+    gap: 0.75rem;
+  }
+
+  .table-mode-toggle {
+    flex-wrap: wrap;
   }
 }

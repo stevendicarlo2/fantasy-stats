@@ -33,12 +33,28 @@ describe("SeasonStatsService", () => {
           matchupSide: "home",
           week: 1,
           phase: "regular",
+          franchiseId: "22222222-2222-4222-8222-222222222222",
+          displayName: "Person One",
+          teamName: "Team One",
+          ownerName: null,
+          effectiveScore: 101,
+          nascarPoints: 2,
+          headToHeadBonus: 2,
+          adjustedNascarPoints: 4,
         },
         {
           matchupId: "11111111-1111-4111-8111-111111111111",
           matchupSide: "away",
           week: 1,
           phase: "regular",
+          franchiseId: "33333333-3333-4333-8333-333333333333",
+          displayName: "Person Two",
+          teamName: "Team Two",
+          ownerName: null,
+          effectiveScore: 99,
+          nascarPoints: 1,
+          headToHeadBonus: 0,
+          adjustedNascarPoints: 1,
         },
       ]),
     };
@@ -58,6 +74,24 @@ describe("SeasonStatsService", () => {
           home: expect.objectContaining({ matchupSide: "home" }),
           away: expect.objectContaining({ matchupSide: "away" }),
         },
+      ],
+      analytics: [
+        expect.objectContaining({
+          franchiseId: "22222222-2222-4222-8222-222222222222",
+          opponentFranchiseId:
+            "33333333-3333-4333-8333-333333333333",
+          week: 1,
+          team: { score: 101, np: 2, anp: 4 },
+          opponent: { score: 99, np: 1, anp: 1 },
+        }),
+        expect.objectContaining({
+          franchiseId: "33333333-3333-4333-8333-333333333333",
+          opponentFranchiseId:
+            "22222222-2222-4222-8222-222222222222",
+          week: 1,
+          team: { score: 99, np: 1, anp: 1 },
+          opponent: { score: 101, np: 2, anp: 4 },
+        }),
       ],
     });
   });
@@ -87,5 +121,55 @@ describe("SeasonStatsService", () => {
     await expect(service.getSeasonStats(2025)).rejects.toThrow(
       "has inconsistent team results",
     );
+  });
+
+  it("excludes postseason results from analytics", async () => {
+    const database = {
+      getSeasonImportSnapshot: vi.fn().mockResolvedValue({
+        season: {
+          year: 2025,
+          teamCount: 2,
+          regularSeasonStartWeek: 1,
+          regularSeasonEndWeek: 1,
+        },
+      }),
+      listSeasonStandings: vi.fn().mockResolvedValue([]),
+      listWeeklyTeamResults: vi.fn().mockResolvedValue([
+        {
+          matchupId: "11111111-1111-4111-8111-111111111111",
+          matchupSide: "home",
+          week: 2,
+          phase: "playoff",
+          franchiseId: "22222222-2222-4222-8222-222222222222",
+          displayName: "Person One",
+          teamName: "Team One",
+          ownerName: null,
+          effectiveScore: 101,
+          nascarPoints: 2,
+          headToHeadBonus: 2,
+          adjustedNascarPoints: 4,
+        },
+        {
+          matchupId: "11111111-1111-4111-8111-111111111111",
+          matchupSide: "away",
+          week: 2,
+          phase: "playoff",
+          franchiseId: "33333333-3333-4333-8333-333333333333",
+          displayName: "Person Two",
+          teamName: "Team Two",
+          ownerName: null,
+          effectiveScore: 99,
+          nascarPoints: 1,
+          headToHeadBonus: 0,
+          adjustedNascarPoints: 1,
+        },
+      ]),
+    };
+    const service = new SeasonStatsService(database);
+
+    await expect(service.getSeasonStats(2025)).resolves.toMatchObject({
+      analytics: [],
+      matchups: [expect.objectContaining({ phase: "playoff" })],
+    });
   });
 });

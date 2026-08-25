@@ -143,6 +143,7 @@ describe("libSQL database provider", () => {
         "0003_support_postseason_byes.sql",
         "0004_scoring_views_with_byes.sql",
         "0005_franchise_display_names.sql",
+        "0006_season_franchise_names.sql",
       ],
     });
     await expect(provider.runMigrations()).resolves.toEqual({

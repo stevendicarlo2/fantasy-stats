@@ -265,6 +265,11 @@ async function upsertSeasonSnapshot(
   }
 
   await transaction.execute({
+    sql: "DELETE FROM season_franchise_names WHERE season_id = ?",
+    args: [snapshot.season.id],
+  });
+
+  await transaction.execute({
     sql: "DELETE FROM season_franchises WHERE season_id = ?",
     args: [snapshot.season.id],
   });
@@ -287,6 +292,24 @@ async function upsertSeasonSnapshot(
         ON CONFLICT(franchise_id, name) DO NOTHING
       `,
       args: [franchiseName.franchiseId, franchiseName.name],
+    });
+
+    await transaction.execute({
+      sql: `
+        INSERT INTO season_franchise_names (
+          season_id,
+          franchise_id,
+          name
+        )
+        VALUES (?, ?, ?)
+        ON CONFLICT(season_id, franchise_id) DO UPDATE SET
+          name = excluded.name
+      `,
+      args: [
+        snapshot.season.id,
+        franchiseName.franchiseId,
+        franchiseName.name,
+      ],
     });
   }
 
@@ -412,13 +435,11 @@ async function loadSeasonSnapshot(
   const franchiseNameResult = await client.execute({
     sql: `
       SELECT
-        franchise_names.franchise_id AS franchiseId,
-        franchise_names.name
-      FROM franchise_names
-      INNER JOIN season_franchises
-        ON season_franchises.franchise_id = franchise_names.franchise_id
-      WHERE season_franchises.season_id = ?
-      ORDER BY franchise_names.franchise_id, franchise_names.name
+        franchise_id AS franchiseId,
+        name
+      FROM season_franchise_names
+      WHERE season_id = ?
+      ORDER BY franchise_id
     `,
     args: [season.id],
   });
@@ -900,7 +921,7 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
         SELECT
           standings.season_year AS seasonYear,
           standings.franchise_id AS franchiseId,
-          names.team_name AS teamName,
+          names.name AS teamName,
           display_names.display_name AS displayName,
           franchises.owner_name AS ownerName,
           standings.weeks_played AS weeksPlayed,
@@ -910,13 +931,13 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
             AS totalAdjustedNascarPoints,
           standings.qualification_rank AS qualificationRank
         FROM regular_season_anp_standings AS standings
+        INNER JOIN seasons
+          ON seasons.year = standings.season_year
         INNER JOIN franchises
           ON franchises.id = standings.franchise_id
-        LEFT JOIN (
-          SELECT franchise_id, MIN(name) AS team_name
-          FROM franchise_names
-          GROUP BY franchise_id
-        ) AS names ON names.franchise_id = standings.franchise_id
+        LEFT JOIN season_franchise_names AS names
+          ON names.season_id = seasons.id
+          AND names.franchise_id = standings.franchise_id
         LEFT JOIN franchise_display_names AS display_names
           ON display_names.franchise_id = standings.franchise_id
         WHERE standings.season_year = ?
@@ -945,11 +966,11 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
           results.week,
           results.phase,
           results.franchise_id AS franchiseId,
-          team_names.team_name AS teamName,
+          team_names.name AS teamName,
           display_names.display_name AS displayName,
           franchises.owner_name AS ownerName,
           results.opponent_franchise_id AS opponentFranchiseId,
-          opponent_names.team_name AS opponentTeamName,
+          opponent_names.name AS opponentTeamName,
           results.effective_score AS effectiveScore,
           results.score_adjustment AS scoreAdjustment,
           results.nascar_points AS nascarPoints,
@@ -959,20 +980,15 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
         INNER JOIN matchups ON matchups.id = results.matchup_id
         INNER JOIN franchises
           ON franchises.id = results.franchise_id
-        LEFT JOIN (
-          SELECT franchise_id, MIN(name) AS team_name
-          FROM franchise_names
-          GROUP BY franchise_id
-        ) AS team_names
-          ON team_names.franchise_id = results.franchise_id
+        LEFT JOIN season_franchise_names AS team_names
+          ON team_names.season_id = matchups.season_id
+          AND team_names.franchise_id = results.franchise_id
         LEFT JOIN franchise_display_names AS display_names
           ON display_names.franchise_id = results.franchise_id
-        LEFT JOIN (
-          SELECT franchise_id, MIN(name) AS team_name
-          FROM franchise_names
-          GROUP BY franchise_id
-        ) AS opponent_names
-          ON opponent_names.franchise_id = results.opponent_franchise_id
+        LEFT JOIN season_franchise_names AS opponent_names
+          ON opponent_names.season_id = matchups.season_id
+          AND opponent_names.franchise_id =
+            results.opponent_franchise_id
         WHERE results.season_year = ?
         ORDER BY
           results.week,

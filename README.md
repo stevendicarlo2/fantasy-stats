@@ -47,3 +47,7 @@ Advanced historical exploration is available through the web
 Canonical franchises may also have private, manually curated
 [person display names](docs/franchise-display-names.md) that remain separate
 from changing ESPN team names.
+
+Season pages include a client-filtered
+[analytics table and weekly chart](docs/season-analytics.md) for scores, NP,
+ANP, and opponent comparisons.

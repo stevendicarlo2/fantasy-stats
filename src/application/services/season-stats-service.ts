@@ -13,6 +13,24 @@ export interface SeasonMatchupResult {
   away: WeeklyTeamResult | null;
 }
 
+export interface AnalyticsMetricValues {
+  score: number;
+  np: number;
+  anp: number;
+}
+
+export interface SeasonAnalyticsRecord {
+  franchiseId: string;
+  displayName: string;
+  teamName: string;
+  opponentFranchiseId: string;
+  opponentDisplayName: string;
+  opponentTeamName: string;
+  week: number;
+  team: AnalyticsMetricValues;
+  opponent: AnalyticsMetricValues;
+}
+
 export interface SeasonStats {
   year: number;
   teamCount: number;
@@ -20,6 +38,7 @@ export interface SeasonStats {
   regularSeasonEndWeek: number;
   standings: SeasonStanding[];
   matchups: SeasonMatchupResult[];
+  analytics: SeasonAnalyticsRecord[];
 }
 
 type SeasonStatsDatabase = Pick<
@@ -79,6 +98,57 @@ export class SeasonStatsService {
         };
       },
     );
+    const analytics = matchups.flatMap((matchup) => {
+      if (matchup.phase !== "regular" || matchup.away === null) {
+        return [];
+      }
+
+      const createRecord = (
+        team: WeeklyTeamResult,
+        opponent: WeeklyTeamResult,
+      ): SeasonAnalyticsRecord => {
+        if (
+          team.adjustedNascarPoints === null ||
+          team.headToHeadBonus === null ||
+          opponent.adjustedNascarPoints === null ||
+          opponent.headToHeadBonus === null
+        ) {
+          throw new SafeOperationalError(
+            `Regular-season matchup ${matchup.id} is missing scoring results`,
+          );
+        }
+
+        return {
+          franchiseId: team.franchiseId,
+          displayName:
+            team.displayName ?? team.ownerName ?? "Unknown person",
+          teamName: team.teamName ?? "Unknown team",
+          opponentFranchiseId: opponent.franchiseId,
+          opponentDisplayName:
+            opponent.displayName ??
+            opponent.ownerName ??
+            "Unknown person",
+          opponentTeamName:
+            opponent.teamName ?? "Unknown team",
+          week: matchup.week,
+          team: {
+            score: team.effectiveScore,
+            np: team.nascarPoints,
+            anp: team.adjustedNascarPoints,
+          },
+          opponent: {
+            score: opponent.effectiveScore,
+            np: opponent.nascarPoints,
+            anp: opponent.adjustedNascarPoints,
+          },
+        };
+      };
+
+      return [
+        createRecord(matchup.home, matchup.away),
+        createRecord(matchup.away, matchup.home),
+      ];
+    });
 
     return {
       year: snapshot.season.year,
@@ -87,6 +157,7 @@ export class SeasonStatsService {
       regularSeasonEndWeek: snapshot.season.regularSeasonEndWeek,
       standings,
       matchups,
+      analytics,
     };
   }
 }
