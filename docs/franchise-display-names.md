@@ -18,11 +18,13 @@ Purpose-built season pages use the person display name as the stable franchise
 label. If no curated name exists, the UI falls back to ESPN owner metadata and
 then an explicit unknown-person label.
 
-Imported names remain in `franchise_names` as franchise history.
-`season_franchise_names` additionally stores the ESPN team name returned for
-each franchise by that season's latest import or refresh. Historical season
-pages may present that season-specific value, but the application still does
-not track within-season rename dates.
+Imported names remain in `franchise_names` as lossless franchise history; a
+franchise can have multiple valid historical names. `season_franchise_names`
+separately stores exactly one ESPN team name returned for each franchise by
+that season's latest import or refresh. Historical season pages may present
+that explicit season-specific value, but the application still does not track
+within-season rename dates. Migrations do not infer season-specific names from
+global name history; a refresh must supply them from ESPN.
 
 Real names are private league data. Do not add them to migrations, fixtures,
 documentation, logs, or the public repository. Populate them only through the

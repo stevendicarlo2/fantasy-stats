@@ -230,14 +230,16 @@ async function upsertSeasonSnapshot(
         league_id,
         year,
         team_count,
+        playoff_team_count,
         regular_season_start_week,
         regular_season_end_week
       )
-      VALUES (?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         league_id = excluded.league_id,
         year = excluded.year,
         team_count = excluded.team_count,
+        playoff_team_count = excluded.playoff_team_count,
         regular_season_start_week = excluded.regular_season_start_week,
         regular_season_end_week = excluded.regular_season_end_week
     `,
@@ -246,6 +248,7 @@ async function upsertSeasonSnapshot(
       snapshot.season.leagueId,
       snapshot.season.year,
       snapshot.season.teamCount,
+      snapshot.season.playoffTeamCount,
       snapshot.season.regularSeasonStartWeek,
       snapshot.season.regularSeasonEndWeek,
     ],
@@ -293,7 +296,9 @@ async function upsertSeasonSnapshot(
       `,
       args: [franchiseName.franchiseId, franchiseName.name],
     });
+  }
 
+  for (const franchiseName of snapshot.seasonFranchiseNames) {
     await transaction.execute({
       sql: `
         INSERT INTO season_franchise_names (
@@ -399,6 +404,7 @@ async function loadSeasonSnapshot(
         league_id AS leagueId,
         year,
         team_count AS teamCount,
+        playoff_team_count AS playoffTeamCount,
         regular_season_start_week AS regularSeasonStartWeek,
         regular_season_end_week AS regularSeasonEndWeek
       FROM seasons
@@ -433,6 +439,19 @@ async function loadSeasonSnapshot(
     args: [season.id],
   });
   const franchiseNameResult = await client.execute({
+    sql: `
+      SELECT
+        franchise_names.franchise_id AS franchiseId,
+        franchise_names.name
+      FROM franchise_names
+      INNER JOIN season_franchises
+        ON season_franchises.franchise_id = franchise_names.franchise_id
+      WHERE season_franchises.season_id = ?
+      ORDER BY franchise_names.franchise_id, franchise_names.name
+    `,
+    args: [season.id],
+  });
+  const seasonFranchiseNameResult = await client.execute({
     sql: `
       SELECT
         franchise_id AS franchiseId,
@@ -503,6 +522,9 @@ async function loadSeasonSnapshot(
       franchiseSchema.parse(row),
     ),
     franchiseNames: franchiseNameResult.rows.map((row) =>
+      franchiseNameSchema.parse(row),
+    ),
+    seasonFranchiseNames: seasonFranchiseNameResult.rows.map((row) =>
       franchiseNameSchema.parse(row),
     ),
     matchups: matchupResult.rows.map((row) => matchupSchema.parse(row)),
@@ -907,6 +929,15 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
     });
 
     return result.rows.map((row) => importRunSchema.parse(row));
+  }
+
+  async hasSeasonImport(seasonYear: number): Promise<boolean> {
+    const result = await this.client.execute({
+      sql: "SELECT id FROM seasons WHERE year = ? LIMIT 1",
+      args: [seasonYear],
+    });
+
+    return result.rows.length === 1;
   }
 
   getSeasonImportSnapshot(

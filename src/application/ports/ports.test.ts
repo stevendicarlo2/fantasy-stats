@@ -58,6 +58,9 @@ const databaseProviderContract = {
   async listImportRuns() {
     return [];
   },
+  async hasSeasonImport() {
+    return false;
+  },
   async getSeasonImportSnapshot() {
     return null;
   },

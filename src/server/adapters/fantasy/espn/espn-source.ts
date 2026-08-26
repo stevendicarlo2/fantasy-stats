@@ -395,12 +395,18 @@ function mapLeagueToSnapshot(
       leagueId,
       year,
       teamCount: league.settings.size,
+      playoffTeamCount:
+        league.settings.scheduleSettings.playoffTeamCount,
       regularSeasonStartWeek: league.status.firstScoringPeriod,
       regularSeasonEndWeek:
         league.settings.scheduleSettings.matchupPeriodCount,
     },
     franchises,
     franchiseNames: league.teams.map((team) => ({
+      franchiseId: franchiseIdByTeam.get(team.id)!,
+      name: team.name,
+    })),
+    seasonFranchiseNames: league.teams.map((team) => ({
       franchiseId: franchiseIdByTeam.get(team.id)!,
       name: team.name,
     })),

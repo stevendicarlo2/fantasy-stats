@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  analyticsHeatColor,
   buildAnalyticsChart,
   createDefaultAnalyticsFilters,
   filterAnalyticsRecords,
+  findAnalyticsValueRange,
   sortAnalyticsSummary,
   summarizeAnalytics,
 } from "./season-analytics";
@@ -145,27 +145,24 @@ describe("season analytics model", () => {
       expect.objectContaining({ week: 2 }),
     ]);
     expect(
-      chart.series.map((series) => series.label),
+      chart.series.map((series) => ({
+        displayName: series.displayName,
+        metric: series.metric,
+        perspective: series.perspective,
+      })),
     ).toEqual([
-      "Alpha · ANP · Team",
-      "Alpha · ANP · Opponent",
-      "Alpha · Score · Team",
-      "Alpha · Score · Opponent",
-    ]);
-    expect(new Set(chart.series.map((series) => series.color)).size).toBe(
-      1,
-    );
-    expect(chart.series.map((series) => series.dash)).toEqual([
-      "10 6",
-      "10 6",
-      "2 5",
-      "2 5",
-    ]);
-    expect(chart.series.map((series) => series.opacity)).toEqual([
-      1,
-      0.42,
-      1,
-      0.42,
+      { displayName: "Alpha", metric: "anp", perspective: "team" },
+      {
+        displayName: "Alpha",
+        metric: "anp",
+        perspective: "opponent",
+      },
+      { displayName: "Alpha", metric: "score", perspective: "team" },
+      {
+        displayName: "Alpha",
+        metric: "score",
+        perspective: "opponent",
+      },
     ]);
   });
 
@@ -201,13 +198,11 @@ describe("season analytics model", () => {
     expect(summary.map((row) => row.rank)).toEqual([1, 1]);
   });
 
-  it("uses a strong red-to-blue heat scale", () => {
-    const values = [0, 5, 10];
-
-    expect(analyticsHeatColor(0, values)).toBe("rgb(218 80 84)");
-    expect(analyticsHeatColor(5, values)).toBe("rgb(72 67 67)");
-    expect(analyticsHeatColor(10, values)).toBe(
-      "rgb(70 108 218)",
-    );
+  it("finds numeric ranges without presentation formatting", () => {
+    expect(findAnalyticsValueRange([])).toBeNull();
+    expect(findAnalyticsValueRange([5, 1, 10])).toEqual({
+      minimum: 1,
+      maximum: 10,
+    });
   });
 });

@@ -11,6 +11,7 @@ export interface Season {
   leagueId: CanonicalId;
   year: number;
   teamCount: number;
+  playoffTeamCount: number;
   regularSeasonStartWeek: number;
   regularSeasonEndWeek: number;
 }
@@ -89,6 +90,7 @@ export interface SeasonImportSnapshot {
   season: Season;
   franchises: Franchise[];
   franchiseNames: FranchiseName[];
+  seasonFranchiseNames: FranchiseName[];
   matchups: Matchup[];
   scores: ImportedMatchupScore[];
   sourceMappings: SourceMapping[];

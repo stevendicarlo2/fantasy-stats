@@ -54,6 +54,14 @@ Local mode persists migrations, canonical data, audits, overrides, and scoring
 views. It is suitable for development and local inspection but is not the
 cross-computer source of truth.
 
+Season rows persist ESPN's configured playoff-team count. Global franchise
+name history and explicit season-specific team names are stored independently,
+so refreshing one season does not collapse a franchise's historical names.
+After upgrading an older database, refresh each imported season once to
+populate newly introduced ESPN-owned season configuration and explicit season
+names. Refresh detects the existing season without requiring the legacy
+snapshot to satisfy the newer domain schema first.
+
 For the web dashboard, add the following to `.env.local` and restart the
 development server:
 

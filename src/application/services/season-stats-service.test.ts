@@ -6,13 +6,11 @@ describe("SeasonStatsService", () => {
   it("returns null without running derived queries for a missing season", async () => {
     const database = {
       getSeasonImportSnapshot: vi.fn().mockResolvedValue(null),
-      listSeasonStandings: vi.fn(),
       listWeeklyTeamResults: vi.fn(),
     };
     const service = new SeasonStatsService(database);
 
     await expect(service.getSeasonStats(2025)).resolves.toBeNull();
-    expect(database.listSeasonStandings).not.toHaveBeenCalled();
     expect(database.listWeeklyTeamResults).not.toHaveBeenCalled();
   });
 
@@ -22,11 +20,11 @@ describe("SeasonStatsService", () => {
         season: {
           year: 2025,
           teamCount: 12,
+          playoffTeamCount: 6,
           regularSeasonStartWeek: 1,
           regularSeasonEndWeek: 14,
         },
       }),
-      listSeasonStandings: vi.fn().mockResolvedValue([{ qualificationRank: 1 }]),
       listWeeklyTeamResults: vi.fn().mockResolvedValue([
         {
           matchupId: "11111111-1111-4111-8111-111111111111",
@@ -63,9 +61,9 @@ describe("SeasonStatsService", () => {
     await expect(service.getSeasonStats(2025)).resolves.toEqual({
       year: 2025,
       teamCount: 12,
+      playoffTeamCount: 6,
       regularSeasonStartWeek: 1,
       regularSeasonEndWeek: 14,
-      standings: [{ qualificationRank: 1 }],
       matchups: [
         {
           id: "11111111-1111-4111-8111-111111111111",
@@ -102,11 +100,11 @@ describe("SeasonStatsService", () => {
         season: {
           year: 2025,
           teamCount: 2,
+          playoffTeamCount: 1,
           regularSeasonStartWeek: 1,
           regularSeasonEndWeek: 1,
         },
       }),
-      listSeasonStandings: vi.fn().mockResolvedValue([]),
       listWeeklyTeamResults: vi.fn().mockResolvedValue([
         {
           matchupId: "11111111-1111-4111-8111-111111111111",
@@ -129,11 +127,11 @@ describe("SeasonStatsService", () => {
         season: {
           year: 2025,
           teamCount: 2,
+          playoffTeamCount: 1,
           regularSeasonStartWeek: 1,
           regularSeasonEndWeek: 1,
         },
       }),
-      listSeasonStandings: vi.fn().mockResolvedValue([]),
       listWeeklyTeamResults: vi.fn().mockResolvedValue([
         {
           matchupId: "11111111-1111-4111-8111-111111111111",

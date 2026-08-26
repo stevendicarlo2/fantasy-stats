@@ -1,6 +1,12 @@
-import { mkdtemp, rm, unlink, writeFile } from "node:fs/promises";
+import {
+  copyFile,
+  mkdtemp,
+  rm,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 import { createClient } from "@libsql/client/sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
@@ -110,6 +116,72 @@ describe("createLocalMigrationRunner", () => {
       MigrationIntegrityError,
     );
     runner.close();
+  });
+
+  it("removes inferred season names in the corrective migration", async () => {
+    const { databaseUrl, directory } = await createTemporaryDatabase();
+    await writeFile(
+      join(directory, "0001_prerequisites.sql"),
+      `
+        CREATE TABLE seasons (
+          id TEXT PRIMARY KEY,
+          team_count INTEGER NOT NULL
+        );
+        CREATE TABLE franchises (id TEXT PRIMARY KEY);
+        CREATE TABLE season_franchises (
+          season_id TEXT NOT NULL,
+          franchise_id TEXT NOT NULL,
+          PRIMARY KEY (season_id, franchise_id)
+        );
+        CREATE TABLE franchise_names (
+          franchise_id TEXT NOT NULL,
+          name TEXT NOT NULL
+        );
+        INSERT INTO seasons (id, team_count) VALUES ('season-1', 2);
+        INSERT INTO franchises (id) VALUES ('team-1');
+        INSERT INTO season_franchises (season_id, franchise_id)
+          VALUES ('season-1', 'team-1');
+        INSERT INTO franchise_names (franchise_id, name)
+          VALUES ('team-1', 'A Name'), ('team-1', 'Z Name');
+      `,
+    );
+    await copyFile(
+      resolve(
+        process.cwd(),
+        "migrations/0006_season_franchise_names.sql",
+      ),
+      join(directory, "0002_season_franchise_names.sql"),
+    );
+    await copyFile(
+      resolve(
+        process.cwd(),
+        "migrations/0007_season_playoff_team_count.sql",
+      ),
+      join(directory, "0003_season_playoff_team_count.sql"),
+    );
+
+    const runner = createLocalMigrationRunner({
+      databaseUrl,
+      migrationsDirectory: directory,
+    });
+    await runner.runMigrations();
+    runner.close();
+
+    const client = createClient({ url: databaseUrl });
+    const names = await client.execute(
+      "SELECT name FROM season_franchise_names",
+    );
+    const columns = await client.execute(
+      "PRAGMA table_info(seasons)",
+    );
+    client.close();
+
+    expect(names.rows).toEqual([]);
+    expect(columns.rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "playoff_team_count" }),
+      ]),
+    );
   });
 
   it("rolls back every pending migration when one fails", async () => {

@@ -36,6 +36,7 @@ function createSnapshot(): SeasonImportSnapshot {
       leagueId: ids.league,
       year: 2025,
       teamCount: 2,
+      playoffTeamCount: 1,
       regularSeasonStartWeek: 1,
       regularSeasonEndWeek: 14,
     },
@@ -44,6 +45,11 @@ function createSnapshot(): SeasonImportSnapshot {
       { id: ids.away, leagueId: ids.league, ownerName: null },
     ],
     franchiseNames: [
+      { franchiseId: ids.home, name: "Home Team" },
+      { franchiseId: ids.home, name: "Historical Home Team" },
+      { franchiseId: ids.away, name: "Away Team" },
+    ],
+    seasonFranchiseNames: [
       { franchiseId: ids.home, name: "Home Team" },
       { franchiseId: ids.away, name: "Away Team" },
     ],
@@ -144,6 +150,7 @@ describe("libSQL database provider", () => {
         "0004_scoring_views_with_byes.sql",
         "0005_franchise_display_names.sql",
         "0006_season_franchise_names.sql",
+        "0007_season_playoff_team_count.sql",
       ],
     });
     await expect(provider.runMigrations()).resolves.toEqual({
@@ -159,12 +166,21 @@ describe("libSQL database provider", () => {
     });
 
     const storedSnapshot = await provider.getSeasonImportSnapshot(2025);
+    const expectedSnapshot = createSnapshot();
     expect(storedSnapshot).toMatchObject({
-      ...createSnapshot(),
+      ...expectedSnapshot,
+      franchiseNames: expect.arrayContaining(
+        expectedSnapshot.franchiseNames,
+      ),
       sourceMappings: expect.arrayContaining(
-        createSnapshot().sourceMappings,
+        expectedSnapshot.sourceMappings,
       ),
     });
+    expect(storedSnapshot?.franchiseNames).toHaveLength(
+      expectedSnapshot.franchiseNames.length,
+    );
+    await expect(provider.hasSeasonImport(2025)).resolves.toBe(true);
+    await expect(provider.hasSeasonImport(2024)).resolves.toBe(false);
     expect(storedSnapshot?.sourceMappings).toHaveLength(5);
     await expect(provider.listSourceMappings("espn")).resolves.toHaveLength(5);
   });
@@ -396,7 +412,17 @@ describe("libSQL database provider", () => {
       leagueId: ids.league,
       ownerName: null,
     };
-    refreshedSnapshot.franchiseNames[0] = {
+    refreshedSnapshot.franchiseNames = [
+      {
+        franchiseId: ids.otherLeague,
+        name: "Replacement Team",
+      },
+      {
+        franchiseId: ids.away,
+        name: "Away Team",
+      },
+    ];
+    refreshedSnapshot.seasonFranchiseNames[0] = {
       franchiseId: ids.otherLeague,
       name: "Replacement Team",
     };

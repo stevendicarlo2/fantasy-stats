@@ -150,6 +150,10 @@ export class DummyDatabaseProvider implements DatabaseProvider {
     );
   }
 
+  async hasSeasonImport(seasonYear: number): Promise<boolean> {
+    return this.snapshots.has(seasonYear);
+  }
+
   async getSeasonImportSnapshot(
     seasonYear: number,
   ): Promise<SeasonImportSnapshot | null> {

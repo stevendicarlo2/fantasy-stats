@@ -106,6 +106,7 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
 
       <SeasonAnalyticsDashboard
         records={stats.analytics}
+        playoffTeamCount={stats.playoffTeamCount}
         regularSeasonStartWeek={stats.regularSeasonStartWeek}
         regularSeasonEndWeek={stats.regularSeasonEndWeek}
       />

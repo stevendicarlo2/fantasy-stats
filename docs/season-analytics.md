@@ -52,8 +52,8 @@ Every column is sortable. Total and weekly values are color-scaled from lower
 to higher values. Heat-scale bounds always use every franchise for the same
 week range, so hiding rows does not change the meaning of existing colors.
 Person, team, and visible total columns remain frozen during horizontal
-scrolling. Default standings show a cutoff rule after sixth place; filtered
-standings omit it.
+scrolling. Default standings show a cutoff rule after the season's configured
+number of ESPN playoff teams; filtered standings and alternate sorts omit it.
 
 Rows represent canonical franchises using curated person display names and
 the ESPN team name stored for the selected season.
@@ -76,3 +76,8 @@ The weekly line chart uses the same filtered records as the table:
 
 Because the table and chart share pure filtering and series-generation
 functions, their visible data should remain consistent.
+
+The application analytics module returns semantic rows, ranks, ranges, and
+chart-series identities. React components own interaction and rendering, while
+the season-page presentation module owns colors, heat values, dash patterns,
+opacity, labels, and number formatting.

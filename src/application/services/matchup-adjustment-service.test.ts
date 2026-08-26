@@ -22,11 +22,13 @@ function createSnapshot(): SeasonImportSnapshot {
       leagueId: "66666666-6666-4666-8666-666666666666",
       year: 2025,
       teamCount: 2,
+      playoffTeamCount: 1,
       regularSeasonStartWeek: 1,
       regularSeasonEndWeek: 1,
     },
     franchises: [],
     franchiseNames: [],
+    seasonFranchiseNames: [],
     matchups: [
       {
         id: ids.matchup,

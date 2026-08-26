@@ -28,6 +28,7 @@ function createSnapshot(): SeasonImportSnapshot {
       leagueId: ids.league,
       year: 2025,
       teamCount: 2,
+      playoffTeamCount: 1,
       regularSeasonStartWeek: 1,
       regularSeasonEndWeek: 14,
     },
@@ -36,6 +37,10 @@ function createSnapshot(): SeasonImportSnapshot {
       { id: ids.away, leagueId: ids.league, ownerName: null },
     ],
     franchiseNames: [
+      { franchiseId: ids.home, name: "Home Team" },
+      { franchiseId: ids.away, name: "Away Team" },
+    ],
+    seasonFranchiseNames: [
       { franchiseId: ids.home, name: "Home Team" },
       { franchiseId: ids.away, name: "Away Team" },
     ],
@@ -119,6 +124,18 @@ describe("seasonImportSnapshotSchema", () => {
 
     expect(() => seasonImportSnapshotSchema.parse(snapshot)).toThrow(
       "must contain at least one name for franchise",
+    );
+  });
+
+  it("requires exactly one season-specific name per franchise", () => {
+    const snapshot = createSnapshot();
+    snapshot.seasonFranchiseNames.push({
+      franchiseId: ids.home,
+      name: "Another Home Name",
+    });
+
+    expect(() => seasonImportSnapshotSchema.parse(snapshot)).toThrow(
+      "must contain exactly one name for franchise",
     );
   });
 

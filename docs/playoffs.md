@@ -9,6 +9,10 @@ ESPN-generated playoff seeds are not authoritative and must not be imported as
 canonical qualification or seeding data. They may differ from the league's ANP
 standings because the league applies its own qualification system.
 
+The number of playoff teams is season configuration imported from ESPN rather
+than a fixed application constant. The regular-season dashboard uses that
+value only to place the default-standings qualification boundary.
+
 ## Playoff matchups
 
 The matchup schedule recorded in ESPN is authoritative. It reflects the

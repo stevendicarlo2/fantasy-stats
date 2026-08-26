@@ -12,12 +12,6 @@ export const analyticsMetrics: AnalyticsMetric[] = [
   "score",
 ];
 
-export const analyticsMetricLabels: Record<AnalyticsMetric, string> = {
-  anp: "ANP",
-  np: "NP",
-  score: "Score",
-};
-
 export interface AnalyticsFilters {
   selectedFranchiseIds: string[];
   startWeek: number;
@@ -48,13 +42,10 @@ export interface AnalyticsSummaryRow {
 
 export interface AnalyticsChartSeries {
   key: string;
-  label: string;
   franchiseId: string;
+  displayName: string;
   metric: AnalyticsMetric;
   perspective: "team" | "opponent";
-  color: string;
-  dash: string | undefined;
-  opacity: number;
 }
 
 export interface AnalyticsChartPoint {
@@ -200,26 +191,6 @@ export function summarizeAnalytics(
   });
 }
 
-function franchiseColor(index: number) {
-  const hue = (index * 137.508) % 360;
-  const saturation = 68 + (index % 3) * 7;
-  const lightness = 57 + (index % 2) * 10;
-
-  return `hsl(${hue.toFixed(1)} ${saturation}% ${lightness}%)`;
-}
-
-function lineDash(metric: AnalyticsMetric) {
-  if (metric === "anp") {
-    return "10 6";
-  }
-
-  if (metric === "score") {
-    return "2 5";
-  }
-
-  return undefined;
-}
-
 export function buildAnalyticsChart(
   records: SeasonAnalyticsRecord[],
   filters: AnalyticsFilters,
@@ -243,10 +214,6 @@ export function buildAnalyticsChart(
       continue;
     }
 
-    const franchiseIndex = allFranchises.findIndex(
-      (candidate) => candidate.id === franchiseId,
-    );
-
     for (const metric of filters.metrics) {
       for (const perspective of filters.perspectives) {
         const key = [
@@ -256,15 +223,10 @@ export function buildAnalyticsChart(
         ].join("__");
         series.push({
           key,
-          label: `${franchise.displayName} · ${
-            analyticsMetricLabels[metric]
-          } · ${perspective === "team" ? "Team" : "Opponent"}`,
           franchiseId,
+          displayName: franchise.displayName,
           metric,
           perspective,
-          color: franchiseColor(franchiseIndex),
-          dash: lineDash(metric),
-          opacity: perspective === "team" ? 1 : 0.42,
         });
       }
 
@@ -376,34 +338,20 @@ export function sortAnalyticsSummary(
   });
 }
 
-export function analyticsHeatColor(
-  value: number,
+export interface AnalyticsValueRange {
+  minimum: number;
+  maximum: number;
+}
+
+export function findAnalyticsValueRange(
   values: number[],
-) {
+): AnalyticsValueRange | null {
   if (values.length === 0) {
-    return "transparent";
+    return null;
   }
 
-  const minimum = Math.min(...values);
-  const maximum = Math.max(...values);
-
-  if (minimum === maximum) {
-    return "rgb(72 67 67)";
-  }
-
-  const position = (value - minimum) / (maximum - minimum);
-  const low = [218, 80, 84];
-  const middle = [72, 67, 67];
-  const high = [70, 108, 218];
-  const start = position < 0.5 ? low : middle;
-  const end = position < 0.5 ? middle : high;
-  const segmentPosition =
-    position < 0.5 ? position * 2 : (position - 0.5) * 2;
-  const color = start.map((channel, index) =>
-    Math.round(
-      channel + (end[index] - channel) * segmentPosition,
-    ),
-  );
-
-  return `rgb(${color.join(" ")})`;
+  return {
+    minimum: Math.min(...values),
+    maximum: Math.max(...values),
+  };
 }

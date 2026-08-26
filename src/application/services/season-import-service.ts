@@ -118,13 +118,13 @@ export class SeasonImportService {
     year: number,
   ) {
     const existingSeason =
-      await this.options.database.getSeasonImportSnapshot(year);
+      await this.options.database.hasSeasonImport(year);
 
-    if (operation === "import" && existingSeason !== null) {
+    if (operation === "import" && existingSeason) {
       throw new SeasonAlreadyImportedError(year);
     }
 
-    if (operation === "refresh" && existingSeason === null) {
+    if (operation === "refresh" && !existingSeason) {
       throw new SeasonNotImportedError(year);
     }
   }

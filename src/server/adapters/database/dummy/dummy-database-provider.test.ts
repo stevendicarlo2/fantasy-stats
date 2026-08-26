@@ -25,6 +25,7 @@ function createSnapshot(): SeasonImportSnapshot {
       leagueId: ids.league,
       year: 2025,
       teamCount: 2,
+      playoffTeamCount: 1,
       regularSeasonStartWeek: 1,
       regularSeasonEndWeek: 1,
     },
@@ -33,6 +34,10 @@ function createSnapshot(): SeasonImportSnapshot {
       { id: ids.away, leagueId: ids.league, ownerName: null },
     ],
     franchiseNames: [
+      { franchiseId: ids.home, name: "Home Team" },
+      { franchiseId: ids.away, name: "Away Team" },
+    ],
+    seasonFranchiseNames: [
       { franchiseId: ids.home, name: "Home Team" },
       { franchiseId: ids.away, name: "Away Team" },
     ],
@@ -79,6 +84,7 @@ describe("DummyDatabaseProvider", () => {
         completedAt: "2026-08-23T22:01:00Z",
       }),
     ).resolves.toMatchObject({ status: "succeeded" });
+    await expect(provider.hasSeasonImport(2025)).resolves.toBe(true);
     await expect(provider.getSeasonImportSnapshot(2025)).resolves.toEqual(
       createSnapshot(),
     );

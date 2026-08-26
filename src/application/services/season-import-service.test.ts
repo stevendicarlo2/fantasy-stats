@@ -33,6 +33,7 @@ function createSnapshot(): SeasonImportSnapshot {
       leagueId: ids.league,
       year: 2025,
       teamCount: 2,
+      playoffTeamCount: 1,
       regularSeasonStartWeek: 1,
       regularSeasonEndWeek: 1,
     },
@@ -43,6 +44,16 @@ function createSnapshot(): SeasonImportSnapshot {
     franchiseNames: [
       { franchiseId: ids.home, name: "Home Team" },
       { franchiseId: ids.away, name: "Away Team" },
+    ],
+    seasonFranchiseNames: [
+      {
+        franchiseId: ids.home,
+        name: "Home Team",
+      },
+      {
+        franchiseId: ids.away,
+        name: "Away Team",
+      },
     ],
     matchups: [
       {
@@ -84,6 +95,7 @@ function createSucceededImportRun(): ImportRun {
 }
 
 describe("SeasonImportService", () => {
+  const hasSeasonImport = vi.fn();
   const getSeasonImportSnapshot = vi.fn();
   const listSourceMappings = vi.fn();
   const startImportRun = vi.fn();
@@ -106,6 +118,7 @@ describe("SeasonImportService", () => {
     startImportRun,
     commitSeasonImport,
     failImportRun,
+    hasSeasonImport,
     getSeasonImportSnapshot,
     listImportRuns: vi.fn(),
     listSeasonStandings: vi.fn(),
@@ -130,7 +143,7 @@ describe("SeasonImportService", () => {
       .mockReset()
       .mockReturnValueOnce(new Date("2026-08-23T22:00:00.000Z"))
       .mockReturnValue(new Date("2026-08-23T22:01:00.000Z"));
-    getSeasonImportSnapshot.mockResolvedValue(null);
+    hasSeasonImport.mockResolvedValue(false);
     listSourceMappings.mockResolvedValue(knownMappings);
     startImportRun.mockResolvedValue(createRunningImportRun());
     fetchSeason.mockResolvedValue(createSnapshot());
@@ -180,7 +193,10 @@ describe("SeasonImportService", () => {
   });
 
   it("refreshes only an existing season", async () => {
-    getSeasonImportSnapshot.mockResolvedValue(createSnapshot());
+    hasSeasonImport.mockResolvedValue(true);
+    getSeasonImportSnapshot.mockRejectedValue(
+      new Error("legacy snapshot is incomplete"),
+    );
     const service = createService();
 
     await service.refreshSeason(2025);
@@ -188,16 +204,17 @@ describe("SeasonImportService", () => {
     expect(startImportRun).toHaveBeenCalledWith(
       expect.objectContaining({ operation: "refresh" }),
     );
+    expect(getSeasonImportSnapshot).not.toHaveBeenCalled();
   });
 
   it("rejects import and refresh precondition violations before auditing", async () => {
     const service = createService();
-    getSeasonImportSnapshot.mockResolvedValueOnce(createSnapshot());
+    hasSeasonImport.mockResolvedValueOnce(true);
 
     await expect(service.importSeason(2025)).rejects.toThrow(
       SeasonAlreadyImportedError,
     );
-    getSeasonImportSnapshot.mockResolvedValueOnce(null);
+    hasSeasonImport.mockResolvedValueOnce(false);
     await expect(service.refreshSeason(2025)).rejects.toThrow(
       SeasonNotImportedError,
     );
@@ -212,7 +229,7 @@ describe("SeasonImportService", () => {
     await expect(service.importSeason(2025.5)).rejects.toThrow(
       InvalidSeasonYearError,
     );
-    expect(getSeasonImportSnapshot).not.toHaveBeenCalled();
+    expect(hasSeasonImport).not.toHaveBeenCalled();
   });
 
   it("records safe source failures and rethrows them", async () => {

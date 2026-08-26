@@ -87,6 +87,7 @@ function createScoringSnapshot(): SeasonImportSnapshot {
       leagueId: ids.league,
       year: 2025,
       teamCount: 6,
+      playoffTeamCount: 4,
       regularSeasonStartWeek: 1,
       regularSeasonEndWeek: 3,
     },
@@ -99,6 +100,12 @@ function createScoringSnapshot(): SeasonImportSnapshot {
       franchiseId,
       name: `Team ${index + 1}`,
     })),
+    seasonFranchiseNames: ids.franchises.map(
+      (franchiseId, index) => ({
+        franchiseId,
+        name: `Team ${index + 1}`,
+      }),
+    ),
     matchups,
     scores,
     sourceMappings: [

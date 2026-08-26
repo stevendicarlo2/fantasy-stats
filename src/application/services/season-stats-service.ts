@@ -1,6 +1,5 @@
 import type {
   DatabaseProvider,
-  SeasonStanding,
   WeeklyTeamResult,
 } from "@/application/ports/database-provider";
 import { SafeOperationalError } from "@/application/errors";
@@ -34,9 +33,9 @@ export interface SeasonAnalyticsRecord {
 export interface SeasonStats {
   year: number;
   teamCount: number;
+  playoffTeamCount: number;
   regularSeasonStartWeek: number;
   regularSeasonEndWeek: number;
-  standings: SeasonStanding[];
   matchups: SeasonMatchupResult[];
   analytics: SeasonAnalyticsRecord[];
 }
@@ -44,7 +43,6 @@ export interface SeasonStats {
 type SeasonStatsDatabase = Pick<
   DatabaseProvider,
   | "getSeasonImportSnapshot"
-  | "listSeasonStandings"
   | "listWeeklyTeamResults"
 >;
 
@@ -63,10 +61,8 @@ export class SeasonStatsService {
       return null;
     }
 
-    const [standings, weeklyResults] = await Promise.all([
-      this.database.listSeasonStandings(seasonYear),
-      this.database.listWeeklyTeamResults(seasonYear),
-    ]);
+    const weeklyResults =
+      await this.database.listWeeklyTeamResults(seasonYear);
     const resultsByMatchup = new Map<string, WeeklyTeamResult[]>();
 
     for (const result of weeklyResults) {
@@ -153,9 +149,9 @@ export class SeasonStatsService {
     return {
       year: snapshot.season.year,
       teamCount: snapshot.season.teamCount,
+      playoffTeamCount: snapshot.season.playoffTeamCount,
       regularSeasonStartWeek: snapshot.season.regularSeasonStartWeek,
       regularSeasonEndWeek: snapshot.season.regularSeasonEndWeek,
-      standings,
       matchups,
       analytics,
     };

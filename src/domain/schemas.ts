@@ -32,9 +32,17 @@ export const seasonSchema: z.ZodType<Season> = z
     leagueId: canonicalIdSchema,
     year: seasonYearSchema,
     teamCount: z.int().min(2),
+    playoffTeamCount: z.int().positive(),
     regularSeasonStartWeek: weekSchema,
     regularSeasonEndWeek: weekSchema,
   })
+  .refine(
+    (season) => season.playoffTeamCount <= season.teamCount,
+    {
+      message: "must not exceed the season's team count",
+      path: ["playoffTeamCount"],
+    },
+  )
   .refine(
     (season) =>
       season.regularSeasonEndWeek >= season.regularSeasonStartWeek,
@@ -186,6 +194,7 @@ export const seasonImportSnapshotSchema: z.ZodType<SeasonImportSnapshot> =
       season: seasonSchema,
       franchises: z.array(franchiseSchema),
       franchiseNames: z.array(franchiseNameSchema),
+      seasonFranchiseNames: z.array(franchiseNameSchema),
       matchups: z.array(matchupSchema),
       scores: z.array(importedMatchupScoreSchema),
       sourceMappings: z.array(sourceMappingSchema),
@@ -247,6 +256,16 @@ export const seasonImportSnapshotSchema: z.ZodType<SeasonImportSnapshot> =
         }
       });
 
+      snapshot.seasonFranchiseNames.forEach((name, index) => {
+        if (!franchiseIds.has(name.franchiseId)) {
+          addReferenceIssue(
+            context,
+            ["seasonFranchiseNames", index, "franchiseId"],
+            "must reference a snapshot franchise",
+          );
+        }
+      });
+
       for (const franchiseId of franchiseIds) {
         if (
           !snapshot.franchiseNames.some(
@@ -257,6 +276,18 @@ export const seasonImportSnapshotSchema: z.ZodType<SeasonImportSnapshot> =
             context,
             ["franchiseNames"],
             `must contain at least one name for franchise ${franchiseId}`,
+          );
+        }
+
+        const seasonNames = snapshot.seasonFranchiseNames.filter(
+          (name) => name.franchiseId === franchiseId,
+        );
+
+        if (seasonNames.length !== 1) {
+          addReferenceIssue(
+            context,
+            ["seasonFranchiseNames"],
+            `must contain exactly one name for franchise ${franchiseId}`,
           );
         }
       }
