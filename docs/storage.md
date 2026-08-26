@@ -57,10 +57,10 @@ cross-computer source of truth.
 Season rows persist ESPN's configured playoff-team count. Global franchise
 name history and explicit season-specific team names are stored independently,
 so refreshing one season does not collapse a franchise's historical names.
-After upgrading an older database, refresh each imported season once to
-populate newly introduced ESPN-owned season configuration and explicit season
-names. Refresh detects the existing season without requiring the legacy
-snapshot to satisfy the newer domain schema first.
+After upgrading an older database, existing season pages remain available but
+omit the playoff boundary and may show unknown team names. Refresh each season
+once to populate newly introduced ESPN-owned season configuration and explicit
+season names.
 
 For the web dashboard, add the following to `.env.local` and restart the
 development server:

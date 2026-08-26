@@ -90,5 +90,20 @@ describe("SeasonAnalyticsTable", () => {
         ".analytics-table tbody tr:first-child .sticky-person",
       )?.textContent,
     ).toBe(fallbackRows[0].displayName);
+
+    view.rerender(
+      <SeasonAnalyticsTable
+        mode="default"
+        onModeChange={vi.fn()}
+        filters={fallbackFilters}
+        rows={fallbackRows}
+        heatRows={fallbackRows}
+        records={records}
+        playoffTeamCount={null}
+      />,
+    );
+    expect(view.container.querySelectorAll(".playoff-cutoff")).toHaveLength(
+      0,
+    );
   });
 });

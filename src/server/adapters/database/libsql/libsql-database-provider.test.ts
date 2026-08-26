@@ -185,6 +185,27 @@ describe("libSQL database provider", () => {
     await expect(provider.listSourceMappings("espn")).resolves.toHaveLength(5);
   });
 
+  it("loads legacy seasons before authoritative configuration refresh", async () => {
+    await provider.runMigrations();
+    const legacySnapshot = createSnapshot();
+    legacySnapshot.season.playoffTeamCount = null;
+    legacySnapshot.seasonFranchiseNames = [];
+
+    await importSnapshot(legacySnapshot);
+
+    await expect(
+      provider.getSeasonImportSnapshot(2025),
+    ).resolves.toMatchObject({
+      season: { playoffTeamCount: null },
+      seasonFranchiseNames: [],
+    });
+    await expect(provider.listWeeklyTeamResults(2025)).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ teamName: null }),
+      ]),
+    );
+  });
+
   it("refreshes imported scores without deleting manual overrides", async () => {
     await provider.runMigrations();
     await importSnapshot();
@@ -213,7 +234,7 @@ describe("libSQL database provider", () => {
     ).resolves.toEqual([matchupOverride]);
   });
 
-  it("returns typed season standings and weekly scoring results", async () => {
+  it("returns typed weekly scoring results", async () => {
     await provider.runMigrations();
     await importSnapshot();
     await provider.saveFranchiseDisplayName({
@@ -221,24 +242,6 @@ describe("libSQL database provider", () => {
       displayName: "Person One",
     });
 
-    await expect(provider.listSeasonStandings(2025)).resolves.toEqual([
-      expect.objectContaining({
-        franchiseId: ids.home,
-        displayName: "Person One",
-        teamName: "Home Team",
-        weeksPlayed: 1,
-        totalNascarPoints: 2,
-        totalHeadToHeadBonus: 2,
-        totalAdjustedNascarPoints: 4,
-        qualificationRank: 1,
-      }),
-      expect.objectContaining({
-        franchiseId: ids.away,
-        teamName: "Away Team",
-        totalAdjustedNascarPoints: 1,
-        qualificationRank: 2,
-      }),
-    ]);
     await expect(provider.listWeeklyTeamResults(2025)).resolves.toEqual([
       expect.objectContaining({
         matchupId: ids.matchup,

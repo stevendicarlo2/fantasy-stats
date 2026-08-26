@@ -145,8 +145,5 @@ describe("DummyDatabaseProvider", () => {
     await expect(
       provider.executeReadOnlyQuery({ statement: "SELECT 1" }),
     ).rejects.toThrow(UnsupportedDummyStorageOperationError);
-    await expect(provider.listSeasonStandings(2025)).rejects.toThrow(
-      "Dummy storage does not support season standings",
-    );
   });
 });

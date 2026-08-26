@@ -21,7 +21,6 @@ import type {
 } from "@/application/ports/database-provider";
 import {
   readOnlyQueryResultSchema,
-  seasonStandingSchema,
   weeklyTeamResultSchema,
 } from "@/application/ports/schemas";
 import {
@@ -944,43 +943,6 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
     seasonYear: number,
   ): Promise<SeasonImportSnapshot | null> {
     return loadSeasonSnapshot(this.client, seasonYear);
-  }
-
-  async listSeasonStandings(seasonYear: number) {
-    const result = await this.client.execute({
-      sql: `
-        SELECT
-          standings.season_year AS seasonYear,
-          standings.franchise_id AS franchiseId,
-          names.name AS teamName,
-          display_names.display_name AS displayName,
-          franchises.owner_name AS ownerName,
-          standings.weeks_played AS weeksPlayed,
-          standings.total_nascar_points AS totalNascarPoints,
-          standings.total_head_to_head_bonus AS totalHeadToHeadBonus,
-          standings.total_adjusted_nascar_points
-            AS totalAdjustedNascarPoints,
-          standings.qualification_rank AS qualificationRank
-        FROM regular_season_anp_standings AS standings
-        INNER JOIN seasons
-          ON seasons.year = standings.season_year
-        INNER JOIN franchises
-          ON franchises.id = standings.franchise_id
-        LEFT JOIN season_franchise_names AS names
-          ON names.season_id = seasons.id
-          AND names.franchise_id = standings.franchise_id
-        LEFT JOIN franchise_display_names AS display_names
-          ON display_names.franchise_id = standings.franchise_id
-        WHERE standings.season_year = ?
-        ORDER BY
-          standings.qualification_rank,
-          standings.total_adjusted_nascar_points DESC,
-          standings.franchise_id
-      `,
-      args: [seasonYear],
-    });
-
-    return result.rows.map((row) => seasonStandingSchema.parse(row));
   }
 
   async listWeeklyTeamResults(seasonYear: number) {

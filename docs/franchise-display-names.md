@@ -24,7 +24,8 @@ separately stores exactly one ESPN team name returned for each franchise by
 that season's latest import or refresh. Historical season pages may present
 that explicit season-specific value, but the application still does not track
 within-season rename dates. Migrations do not infer season-specific names from
-global name history; a refresh must supply them from ESPN.
+global name history; a legacy season remains loadable with an unknown-team
+fallback until a refresh supplies the name from ESPN.
 
 Real names are private league data. Do not add them to migrations, fixtures,
 documentation, logs, or the public repository. Populate them only through the

@@ -32,12 +32,14 @@ export const seasonSchema: z.ZodType<Season> = z
     leagueId: canonicalIdSchema,
     year: seasonYearSchema,
     teamCount: z.int().min(2),
-    playoffTeamCount: z.int().positive(),
+    playoffTeamCount: z.int().positive().nullable(),
     regularSeasonStartWeek: weekSchema,
     regularSeasonEndWeek: weekSchema,
   })
   .refine(
-    (season) => season.playoffTeamCount <= season.teamCount,
+    (season) =>
+      season.playoffTeamCount === null ||
+      season.playoffTeamCount <= season.teamCount,
     {
       message: "must not exceed the season's team count",
       path: ["playoffTeamCount"],
@@ -283,11 +285,11 @@ export const seasonImportSnapshotSchema: z.ZodType<SeasonImportSnapshot> =
           (name) => name.franchiseId === franchiseId,
         );
 
-        if (seasonNames.length !== 1) {
+        if (seasonNames.length > 1) {
           addReferenceIssue(
             context,
             ["seasonFranchiseNames"],
-            `must contain exactly one name for franchise ${franchiseId}`,
+            `must contain at most one name for franchise ${franchiseId}`,
           );
         }
       }

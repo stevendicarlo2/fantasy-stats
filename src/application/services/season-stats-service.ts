@@ -33,7 +33,7 @@ export interface SeasonAnalyticsRecord {
 export interface SeasonStats {
   year: number;
   teamCount: number;
-  playoffTeamCount: number;
+  playoffTeamCount: number | null;
   regularSeasonStartWeek: number;
   regularSeasonEndWeek: number;
   matchups: SeasonMatchupResult[];

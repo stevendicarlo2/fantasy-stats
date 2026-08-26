@@ -11,7 +11,9 @@ standings because the league applies its own qualification system.
 
 The number of playoff teams is season configuration imported from ESPN rather
 than a fixed application constant. The regular-season dashboard uses that
-value only to place the default-standings qualification boundary.
+value only to place the default-standings qualification boundary. A legacy
+season with no imported value remains loadable and omits the boundary until
+the season is refreshed.
 
 ## Playoff matchups
 

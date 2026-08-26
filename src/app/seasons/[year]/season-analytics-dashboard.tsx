@@ -20,7 +20,7 @@ import {
 
 interface SeasonAnalyticsDashboardProps {
   records: SeasonAnalyticsRecord[];
-  playoffTeamCount: number;
+  playoffTeamCount: number | null;
   regularSeasonStartWeek: number;
   regularSeasonEndWeek: number;
 }

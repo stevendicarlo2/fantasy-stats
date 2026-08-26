@@ -3,7 +3,6 @@ import { z } from "zod";
 import type {
   MigrationResult,
   ReadOnlyQueryResult,
-  SeasonStanding,
   WeeklyTeamResult,
 } from "./database-provider";
 
@@ -53,19 +52,6 @@ export const readOnlyQueryResultSchema: z.ZodType<ReadOnlyQueryResult> = z
       }
     });
   });
-
-export const seasonStandingSchema: z.ZodType<SeasonStanding> = z.object({
-  seasonYear: z.number().int(),
-  franchiseId: z.uuid(),
-  teamName: z.string().trim().min(1).nullable(),
-  displayName: z.string().trim().min(1).nullable(),
-  ownerName: z.string().trim().min(1).nullable(),
-  weeksPlayed: z.number().int().nonnegative(),
-  totalNascarPoints: z.number(),
-  totalHeadToHeadBonus: z.number(),
-  totalAdjustedNascarPoints: z.number(),
-  qualificationRank: z.number().int().positive(),
-});
 
 export const weeklyTeamResultSchema: z.ZodType<WeeklyTeamResult> = z.object({
   seasonYear: z.number().int(),

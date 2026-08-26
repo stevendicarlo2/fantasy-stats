@@ -11,7 +11,7 @@ export interface Season {
   leagueId: CanonicalId;
   year: number;
   teamCount: number;
-  playoffTeamCount: number;
+  playoffTeamCount: number | null;
   regularSeasonStartWeek: number;
   regularSeasonEndWeek: number;
 }

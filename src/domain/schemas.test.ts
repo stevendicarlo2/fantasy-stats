@@ -127,7 +127,15 @@ describe("seasonImportSnapshotSchema", () => {
     );
   });
 
-  it("requires exactly one season-specific name per franchise", () => {
+  it("allows missing legacy season configuration", () => {
+    const snapshot = createSnapshot();
+    snapshot.season.playoffTeamCount = null;
+    snapshot.seasonFranchiseNames = [];
+
+    expect(seasonImportSnapshotSchema.parse(snapshot)).toEqual(snapshot);
+  });
+
+  it("allows at most one season-specific name per franchise", () => {
     const snapshot = createSnapshot();
     snapshot.seasonFranchiseNames.push({
       franchiseId: ids.home,
@@ -135,7 +143,7 @@ describe("seasonImportSnapshotSchema", () => {
     });
 
     expect(() => seasonImportSnapshotSchema.parse(snapshot)).toThrow(
-      "must contain exactly one name for franchise",
+      "must contain at most one name for franchise",
     );
   });
 

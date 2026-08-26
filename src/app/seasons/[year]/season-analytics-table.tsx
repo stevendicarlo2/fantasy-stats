@@ -7,8 +7,6 @@ import {
   findAnalyticsValueRange,
   sortAnalyticsSummary,
   type AnalyticsFilters,
-  type AnalyticsMetric,
-  type AnalyticsPerspective,
   type AnalyticsSortDirection,
   type AnalyticsSortKey,
   type AnalyticsSummaryRow,
@@ -30,7 +28,7 @@ interface SeasonAnalyticsTableProps {
   rows: AnalyticsSummaryRow[];
   heatRows: AnalyticsSummaryRow[];
   records: SeasonAnalyticsRecord[];
-  playoffTeamCount: number;
+  playoffTeamCount: number | null;
 }
 
 export function SeasonAnalyticsTable({
@@ -200,6 +198,7 @@ export function SeasonAnalyticsTable({
 
   const showPlayoffCutoff =
     mode === "default" &&
+    playoffTeamCount !== null &&
     ((effectiveSort.key === "rank" &&
       effectiveSort.direction === "asc") ||
       (effectiveSort.key === "total:team:anp" &&
@@ -307,7 +306,7 @@ export function SeasonAnalyticsTable({
                 <tr
                   className={
                     showPlayoffCutoff &&
-                    index === playoffTeamCount - 1
+                    index + 1 === playoffTeamCount
                       ? "playoff-cutoff"
                       : undefined
                   }
