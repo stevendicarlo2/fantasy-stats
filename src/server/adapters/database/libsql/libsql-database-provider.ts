@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import {
   createClient,
   type Client,
+  type InStatement,
   type InValue,
   type ResultSet,
   type Transaction,
@@ -135,6 +136,15 @@ function placeholders(values: unknown[]) {
   return values.map(() => "?").join(", ");
 }
 
+async function executeWriteBatch(
+  transaction: Transaction,
+  statements: InStatement[],
+) {
+  if (statements.length > 0) {
+    await transaction.batch(statements);
+  }
+}
+
 async function deleteRemovedMatchups(
   transaction: Transaction,
   snapshot: SeasonImportSnapshot,
@@ -213,48 +223,46 @@ async function upsertSeasonSnapshot(
   transaction: Transaction,
   snapshot: SeasonImportSnapshot,
 ) {
-  await transaction.execute({
-    sql: `
-      INSERT INTO leagues (id, name)
-      VALUES (?, ?)
-      ON CONFLICT(id) DO UPDATE SET name = excluded.name
-    `,
-    args: [snapshot.league.id, snapshot.league.name],
-  });
-
-  await transaction.execute({
-    sql: `
-      INSERT INTO seasons (
-        id,
-        league_id,
-        year,
-        team_count,
-        playoff_team_count,
-        regular_season_start_week,
-        regular_season_end_week
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        league_id = excluded.league_id,
-        year = excluded.year,
-        team_count = excluded.team_count,
-        playoff_team_count = excluded.playoff_team_count,
-        regular_season_start_week = excluded.regular_season_start_week,
-        regular_season_end_week = excluded.regular_season_end_week
-    `,
-    args: [
-      snapshot.season.id,
-      snapshot.season.leagueId,
-      snapshot.season.year,
-      snapshot.season.teamCount,
-      snapshot.season.playoffTeamCount,
-      snapshot.season.regularSeasonStartWeek,
-      snapshot.season.regularSeasonEndWeek,
-    ],
-  });
-
-  for (const franchise of snapshot.franchises) {
-    await transaction.execute({
+  await executeWriteBatch(transaction, [
+    {
+      sql: `
+        INSERT INTO leagues (id, name)
+        VALUES (?, ?)
+        ON CONFLICT(id) DO UPDATE SET name = excluded.name
+      `,
+      args: [snapshot.league.id, snapshot.league.name],
+    },
+    {
+      sql: `
+        INSERT INTO seasons (
+          id,
+          league_id,
+          year,
+          team_count,
+          playoff_team_count,
+          regular_season_start_week,
+          regular_season_end_week
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          league_id = excluded.league_id,
+          year = excluded.year,
+          team_count = excluded.team_count,
+          playoff_team_count = excluded.playoff_team_count,
+          regular_season_start_week = excluded.regular_season_start_week,
+          regular_season_end_week = excluded.regular_season_end_week
+      `,
+      args: [
+        snapshot.season.id,
+        snapshot.season.leagueId,
+        snapshot.season.year,
+        snapshot.season.teamCount,
+        snapshot.season.playoffTeamCount,
+        snapshot.season.regularSeasonStartWeek,
+        snapshot.season.regularSeasonEndWeek,
+      ],
+    },
+    ...snapshot.franchises.map((franchise) => ({
       sql: `
         INSERT INTO franchises (id, league_id, owner_name)
         VALUES (?, ?, ?)
@@ -263,42 +271,31 @@ async function upsertSeasonSnapshot(
           owner_name = excluded.owner_name
       `,
       args: [franchise.id, franchise.leagueId, franchise.ownerName],
-    });
-  }
-
-  await transaction.execute({
-    sql: "DELETE FROM season_franchise_names WHERE season_id = ?",
-    args: [snapshot.season.id],
-  });
-
-  await transaction.execute({
-    sql: "DELETE FROM season_franchises WHERE season_id = ?",
-    args: [snapshot.season.id],
-  });
-
-  for (const franchise of snapshot.franchises) {
-    await transaction.execute({
+    })),
+    {
+      sql: "DELETE FROM season_franchise_names WHERE season_id = ?",
+      args: [snapshot.season.id],
+    },
+    {
+      sql: "DELETE FROM season_franchises WHERE season_id = ?",
+      args: [snapshot.season.id],
+    },
+    ...snapshot.franchises.map((franchise) => ({
       sql: `
         INSERT INTO season_franchises (season_id, franchise_id)
         VALUES (?, ?)
       `,
       args: [snapshot.season.id, franchise.id],
-    });
-  }
-
-  for (const franchiseName of snapshot.franchiseNames) {
-    await transaction.execute({
+    })),
+    ...snapshot.franchiseNames.map((franchiseName) => ({
       sql: `
         INSERT INTO franchise_names (franchise_id, name)
         VALUES (?, ?)
         ON CONFLICT(franchise_id, name) DO NOTHING
       `,
       args: [franchiseName.franchiseId, franchiseName.name],
-    });
-  }
-
-  for (const franchiseName of snapshot.seasonFranchiseNames) {
-    await transaction.execute({
+    })),
+    ...snapshot.seasonFranchiseNames.map((franchiseName) => ({
       sql: `
         INSERT INTO season_franchise_names (
           season_id,
@@ -314,49 +311,47 @@ async function upsertSeasonSnapshot(
         franchiseName.franchiseId,
         franchiseName.name,
       ],
-    });
-  }
+    })),
+  ]);
 
   await validateExistingOverrides(transaction, snapshot);
   await deleteRemovedMatchups(transaction, snapshot);
 
-  for (const matchup of snapshot.matchups) {
-    await transaction.execute({
-      sql: `
-        INSERT INTO matchups (
-          id,
-          season_id,
-          week,
-          phase,
-          home_franchise_id,
-          away_franchise_id
-        )
-        VALUES (?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-          season_id = excluded.season_id,
-          week = excluded.week,
-          phase = excluded.phase,
-          home_franchise_id = excluded.home_franchise_id,
-          away_franchise_id = excluded.away_franchise_id
-      `,
-      args: [
-        matchup.id,
-        matchup.seasonId,
-        matchup.week,
-        matchup.phase,
-        matchup.homeFranchiseId,
-        matchup.awayFranchiseId,
-      ],
-    });
-
-    await transaction.execute({
-      sql: "DELETE FROM imported_matchup_scores WHERE matchup_id = ?",
-      args: [matchup.id],
-    });
-  }
-
-  for (const score of snapshot.scores) {
-    await transaction.execute({
+  await executeWriteBatch(transaction, [
+    ...snapshot.matchups.flatMap((matchup) => [
+      {
+        sql: `
+          INSERT INTO matchups (
+            id,
+            season_id,
+            week,
+            phase,
+            home_franchise_id,
+            away_franchise_id
+          )
+          VALUES (?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            season_id = excluded.season_id,
+            week = excluded.week,
+            phase = excluded.phase,
+            home_franchise_id = excluded.home_franchise_id,
+            away_franchise_id = excluded.away_franchise_id
+        `,
+        args: [
+          matchup.id,
+          matchup.seasonId,
+          matchup.week,
+          matchup.phase,
+          matchup.homeFranchiseId,
+          matchup.awayFranchiseId,
+        ],
+      },
+      {
+        sql: "DELETE FROM imported_matchup_scores WHERE matchup_id = ?",
+        args: [matchup.id],
+      },
+    ]),
+    ...snapshot.scores.map((score) => ({
       sql: `
         INSERT INTO imported_matchup_scores (
           matchup_id,
@@ -366,11 +361,8 @@ async function upsertSeasonSnapshot(
         VALUES (?, ?, ?)
       `,
       args: [score.matchupId, score.franchiseId, score.score],
-    });
-  }
-
-  for (const mapping of snapshot.sourceMappings) {
-    await transaction.execute({
+    })),
+    ...snapshot.sourceMappings.map((mapping) => ({
       sql: `
         INSERT INTO source_mappings (
           provider,
@@ -388,8 +380,8 @@ async function upsertSeasonSnapshot(
         mapping.canonicalId,
         mapping.externalId,
       ],
-    });
-  }
+    })),
+  ]);
 }
 
 async function loadSeasonSnapshot(

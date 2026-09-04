@@ -31,7 +31,10 @@ deleted during a refresh.
 `startImportRun` records an attempt before source retrieval or persistence.
 
 `commitSeasonImport` validates the complete canonical snapshot and applies it in
-one write transaction. It:
+one write transaction. Ordered writes are sent through libSQL transaction
+batches to avoid a separate database round trip for every imported record,
+while validation queries remain explicit checkpoints inside the same
+transaction. It:
 
 - Upserts canonical league, season, franchise, matchup, score, and mapping data
 - Replaces season participation with the latest snapshot
