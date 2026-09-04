@@ -176,6 +176,27 @@ p {
   font-size: 0.9rem;
 }
 
+.season-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.season-year-selector {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 7rem;
+  color: #dce7e1;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.season-year-selector select {
+  padding: 0.8rem 2.25rem 0.8rem 0.85rem;
+}
+
 .analytics-section {
   display: grid;
   gap: 0.75rem;

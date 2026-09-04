@@ -181,6 +181,9 @@ describe("libSQL database provider", () => {
     );
     await expect(provider.hasSeasonImport(2025)).resolves.toBe(true);
     await expect(provider.hasSeasonImport(2024)).resolves.toBe(false);
+    await expect(provider.listImportedSeasonYears()).resolves.toEqual([
+      2025,
+    ]);
     expect(storedSnapshot?.sourceMappings).toHaveLength(5);
     await expect(provider.listSourceMappings("espn")).resolves.toHaveLength(5);
   });

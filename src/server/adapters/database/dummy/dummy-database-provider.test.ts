@@ -88,6 +88,9 @@ describe("DummyDatabaseProvider", () => {
     await expect(provider.getSeasonImportSnapshot(2025)).resolves.toEqual(
       createSnapshot(),
     );
+    await expect(provider.listImportedSeasonYears()).resolves.toEqual([
+      2025,
+    ]);
     await expect(provider.listSourceMappings("espn")).resolves.toHaveLength(
       1,
     );

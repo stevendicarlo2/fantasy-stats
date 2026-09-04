@@ -17,6 +17,9 @@ The dataset is sent to the season-page client component once. Team, week,
 metric, perspective, total, rank, table, and chart changes are then calculated
 in the browser without additional database requests.
 
+The season header includes a year selector containing every imported season.
+Changing the selection navigates directly to that season's overview.
+
 Playoff and consolation weeks are excluded. Manual score adjustments are
 already included through the effective-score SQL views.
 

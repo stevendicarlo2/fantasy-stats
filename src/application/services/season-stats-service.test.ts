@@ -6,6 +6,7 @@ describe("SeasonStatsService", () => {
   it("returns null without running derived queries for a missing season", async () => {
     const database = {
       getSeasonImportSnapshot: vi.fn().mockResolvedValue(null),
+      listImportedSeasonYears: vi.fn(),
       listWeeklyTeamResults: vi.fn(),
     };
     const service = new SeasonStatsService(database);
@@ -25,6 +26,7 @@ describe("SeasonStatsService", () => {
           regularSeasonEndWeek: 14,
         },
       }),
+      listImportedSeasonYears: vi.fn(),
       listWeeklyTeamResults: vi.fn().mockResolvedValue([
         {
           matchupId: "11111111-1111-4111-8111-111111111111",
@@ -105,6 +107,7 @@ describe("SeasonStatsService", () => {
           regularSeasonEndWeek: 1,
         },
       }),
+      listImportedSeasonYears: vi.fn(),
       listWeeklyTeamResults: vi.fn().mockResolvedValue([
         {
           matchupId: "11111111-1111-4111-8111-111111111111",
@@ -132,6 +135,7 @@ describe("SeasonStatsService", () => {
           regularSeasonEndWeek: 1,
         },
       }),
+      listImportedSeasonYears: vi.fn(),
       listWeeklyTeamResults: vi.fn().mockResolvedValue([
         {
           matchupId: "11111111-1111-4111-8111-111111111111",
@@ -169,5 +173,20 @@ describe("SeasonStatsService", () => {
       analytics: [],
       matchups: [expect.objectContaining({ phase: "playoff" })],
     });
+  });
+
+  it("lists imported seasons for overview navigation", async () => {
+    const database = {
+      getSeasonImportSnapshot: vi.fn(),
+      listImportedSeasonYears: vi
+        .fn()
+        .mockResolvedValue([2025, 2023, 2021]),
+      listWeeklyTeamResults: vi.fn(),
+    };
+    const service = new SeasonStatsService(database);
+
+    await expect(service.getAvailableSeasonYears()).resolves.toEqual([
+      2025, 2023, 2021,
+    ]);
   });
 });

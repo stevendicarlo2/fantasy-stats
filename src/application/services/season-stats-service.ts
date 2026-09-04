@@ -43,11 +43,16 @@ export interface SeasonStats {
 type SeasonStatsDatabase = Pick<
   DatabaseProvider,
   | "getSeasonImportSnapshot"
+  | "listImportedSeasonYears"
   | "listWeeklyTeamResults"
 >;
 
 export class SeasonStatsService {
   constructor(private readonly database: SeasonStatsDatabase) {}
+
+  getAvailableSeasonYears(): Promise<number[]> {
+    return this.database.listImportedSeasonYears();
+  }
 
   async getSeasonStats(seasonYear: number): Promise<SeasonStats | null> {
     if (!Number.isInteger(seasonYear)) {

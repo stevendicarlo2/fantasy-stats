@@ -149,6 +149,10 @@ export class DummyDatabaseProvider implements DatabaseProvider {
     );
   }
 
+  async listImportedSeasonYears(): Promise<number[]> {
+    return [...this.snapshots.keys()].sort((left, right) => right - left);
+  }
+
   async hasSeasonImport(seasonYear: number): Promise<boolean> {
     return this.snapshots.has(seasonYear);
   }

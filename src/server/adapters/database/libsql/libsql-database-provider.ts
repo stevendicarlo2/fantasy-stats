@@ -55,6 +55,10 @@ const overrideTargetRowSchema = z.object({
   franchiseId: z.uuid(),
 });
 
+const seasonYearRowSchema = z.object({
+  year: z.number().int(),
+});
+
 export interface LibSqlDatabaseProviderOptions {
   url: string;
   authToken?: string;
@@ -920,6 +924,14 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
     });
 
     return result.rows.map((row) => importRunSchema.parse(row));
+  }
+
+  async listImportedSeasonYears(): Promise<number[]> {
+    const result = await this.client.execute(
+      "SELECT year FROM seasons ORDER BY year DESC",
+    );
+
+    return result.rows.map((row) => seasonYearRowSchema.parse(row).year);
   }
 
   async hasSeasonImport(seasonYear: number): Promise<boolean> {

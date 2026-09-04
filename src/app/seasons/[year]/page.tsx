@@ -8,6 +8,7 @@ import type { SeasonMatchupResult } from "@/application/services/season-stats-se
 import { getWebRuntime } from "@/server/runtime/web-runtime";
 
 import { SeasonAnalyticsDashboard } from "./season-analytics-dashboard";
+import { SeasonYearSelector } from "./season-year-selector";
 
 interface SeasonPageProps {
   params: Promise<{ year: string }>;
@@ -30,13 +31,20 @@ async function loadSeason(yearValue: string) {
 
   try {
     const runtime = await getWebRuntime();
-    const stats = await runtime.seasonStatsService.getSeasonStats(year);
+    const [stats, availableYears] = await Promise.all([
+      runtime.seasonStatsService.getSeasonStats(year),
+      runtime.seasonStatsService.getAvailableSeasonYears(),
+    ]);
 
     if (!stats) {
       return { status: "missing" as const };
     }
 
-    return { status: "ready" as const, stats };
+    return {
+      status: "ready" as const,
+      stats,
+      availableYears,
+    };
   } catch (error) {
     return {
       status: "error" as const,
@@ -96,12 +104,18 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
             {stats.regularSeasonStartWeek}-{stats.regularSeasonEndWeek}
           </p>
         </div>
-        <Link
-          className="page-action"
-          href={`/seasons/${stats.year}/adjustments`}
-        >
-          Manage score adjustments
-        </Link>
+        <div className="season-hero-actions">
+          <SeasonYearSelector
+            availableYears={pageData.availableYears}
+            currentYear={stats.year}
+          />
+          <Link
+            className="page-action"
+            href={`/seasons/${stats.year}/adjustments`}
+          >
+            Manage score adjustments
+          </Link>
+        </div>
       </header>
 
       <SeasonAnalyticsDashboard
