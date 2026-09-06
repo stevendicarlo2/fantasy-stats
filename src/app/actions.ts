@@ -12,6 +12,7 @@ import {
 } from "./import-action-logic";
 import {
   executeSqlConsoleAction,
+  executeSqlQueryAssistantAction,
   type SqlConsoleActionState,
 } from "./sql-console-action-logic";
 import { getWebRuntime } from "@/server/runtime/web-runtime";
@@ -53,6 +54,25 @@ export async function runSqlConsoleAction(
   _previousState: SqlConsoleActionState,
   formData: FormData,
 ): Promise<SqlConsoleActionState> {
+  const operation = formData.get("operation");
+
+  if (
+    operation === "generate" ||
+    operation === "generate-and-run"
+  ) {
+    return executeSqlQueryAssistantAction(
+      formData,
+      operation === "generate-and-run",
+      async () => {
+        const runtime = await getWebRuntime();
+        return {
+          assistant: runtime.sqlQueryAssistantService,
+          console: runtime.sqlConsoleService,
+        };
+      },
+    );
+  }
+
   return executeSqlConsoleAction(formData, async () => {
     const runtime = await getWebRuntime();
     return runtime.sqlConsoleService;

@@ -670,6 +670,20 @@ button.filter-chip.selected {
   font-weight: 650;
 }
 
+.copilot-query-builder {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #27483a;
+  border-radius: 0.75rem;
+  background: rgb(11 33 24 / 55%);
+}
+
+.copilot-query-builder .button-row {
+  margin-top: 0;
+}
+
 .sql-editor,
 .parameter-editor {
   font-family:

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { executeSqlConsoleAction } from "./sql-console-action-logic";
+import { executeSqlQueryAssistantAction } from "./sql-console-action-logic";
 import { SafeOperationalError } from "@/application/errors";
 
 describe("executeSqlConsoleAction", () => {
@@ -43,6 +44,7 @@ describe("executeSqlConsoleAction", () => {
       message:
         "Parameters may contain only strings, finite numbers, and null",
       result: null,
+      generatedQuery: null,
     });
   });
 
@@ -64,6 +66,103 @@ describe("executeSqlConsoleAction", () => {
     ).resolves.toMatchObject({
       status: "error",
       message: "Read-only queries cannot contain DELETE",
+    });
+  });
+
+  it("generates a query without executing it", async () => {
+    const assistant = {
+      generate: vi.fn().mockResolvedValue({
+        statement: "SELECT year FROM seasons WHERE year = ?",
+        parameters: [2017],
+      }),
+    };
+    const console = { execute: vi.fn() };
+    const formData = new FormData();
+    formData.set("request", "Show the 2017 season");
+
+    await expect(
+      executeSqlQueryAssistantAction(formData, false, () => ({
+        assistant,
+        console,
+      })),
+    ).resolves.toEqual({
+      status: "success",
+      message: "Query generated. Review or run it below.",
+      result: null,
+      generatedQuery: {
+        statement: "SELECT year FROM seasons WHERE year = ?",
+        parameters: "[2017]",
+      },
+    });
+    expect(console.execute).not.toHaveBeenCalled();
+  });
+
+  it("executes a generated query through the console service", async () => {
+    const query = {
+      statement: "SELECT year FROM seasons WHERE year = ?",
+      parameters: [2017],
+    };
+    const result = {
+      columns: ["year"],
+      rows: [{ year: 2017 }],
+      rowCount: 1,
+      truncated: false,
+    };
+    const assistant = { generate: vi.fn().mockResolvedValue(query) };
+    const console = { execute: vi.fn().mockResolvedValue(result) };
+    const formData = new FormData();
+    formData.set("request", "Show the 2017 season");
+
+    await expect(
+      executeSqlQueryAssistantAction(formData, true, () => ({
+        assistant,
+        console,
+      })),
+    ).resolves.toMatchObject({
+      status: "success",
+      message: "Query generated. Query returned 1 row",
+      result,
+      generatedQuery: {
+        statement: query.statement,
+        parameters: "[2017]",
+      },
+    });
+    expect(console.execute).toHaveBeenCalledWith(
+      query.statement,
+      query.parameters,
+    );
+  });
+
+  it("keeps a rejected generated query visible for correction", async () => {
+    const formData = new FormData();
+    formData.set("request", "Delete imported seasons");
+
+    await expect(
+      executeSqlQueryAssistantAction(formData, true, () => ({
+        assistant: {
+          generate: vi.fn().mockResolvedValue({
+            statement: "DELETE FROM seasons",
+            parameters: [],
+          }),
+        },
+        console: {
+          execute: vi
+            .fn()
+            .mockRejectedValue(
+              new SafeOperationalError(
+                "Read-only queries cannot contain DELETE",
+              ),
+            ),
+        },
+      })),
+    ).resolves.toEqual({
+      status: "error",
+      message: "Read-only queries cannot contain DELETE",
+      result: null,
+      generatedQuery: {
+        statement: "DELETE FROM seasons",
+        parameters: "[]",
+      },
     });
   });
 });

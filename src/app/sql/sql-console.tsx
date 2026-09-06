@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 
 import {
   initialSqlConsoleActionState,
+  type SqlConsoleActionState,
 } from "../sql-console-action-logic";
 import {
   sqlStarterQueries,
@@ -20,7 +21,22 @@ export function SqlConsole() {
   const [statement, setStatement] = useState(initialQuery.statement);
   const [parameters, setParameters] = useState(initialQuery.parameters);
   const [state, formAction, pending] = useActionState(
-    runSqlConsoleAction,
+    async (
+      previousState: SqlConsoleActionState,
+      formData: FormData,
+    ) => {
+      const nextState = await runSqlConsoleAction(
+        previousState,
+        formData,
+      );
+
+      if (nextState.generatedQuery) {
+        setStatement(nextState.generatedQuery.statement);
+        setParameters(nextState.generatedQuery.parameters);
+      }
+
+      return nextState;
+    },
     initialSqlConsoleActionState,
   );
 
@@ -61,6 +77,40 @@ export function SqlConsole() {
           rejected.
         </p>
         <form action={formAction} className="sql-form">
+          <div className="copilot-query-builder">
+            <label htmlFor="sql-request">Ask Copilot for a query</label>
+            <textarea
+              id="sql-request"
+              name="request"
+              rows={4}
+              placeholder="For example: Compare each person's average weekly ANP in 2023 and 2024."
+              maxLength={2000}
+            />
+            <p className="field-help">
+              Runs the local Copilot CLI with schema context and no tools. The
+              generated SQL still uses this console&apos;s read-only checks.
+            </p>
+            <div className="button-row">
+              <button
+                type="submit"
+                name="operation"
+                value="generate"
+                disabled={pending}
+              >
+                {pending ? "Working..." : "Generate query"}
+              </button>
+              <button
+                type="submit"
+                name="operation"
+                value="generate-and-run"
+                className="secondary"
+                disabled={pending}
+              >
+                Generate &amp; run
+              </button>
+            </div>
+          </div>
+
           <label htmlFor="sql-statement">SQL statement</label>
           <textarea
             id="sql-statement"
@@ -89,7 +139,12 @@ export function SqlConsole() {
             strings, finite numbers, and null.
           </p>
 
-          <button type="submit" disabled={pending}>
+          <button
+            type="submit"
+            name="operation"
+            value="run"
+            disabled={pending}
+          >
             {pending ? "Running..." : "Run query"}
           </button>
         </form>
