@@ -9,9 +9,12 @@ describe("season analytics presentation", () => {
   it("formats heat ranges as presentation colors", () => {
     const range = { minimum: 0, maximum: 10 };
 
-    expect(analyticsHeatColor(0, range)).toBe("rgb(218 80 84)");
-    expect(analyticsHeatColor(5, range)).toBe("rgb(72 67 67)");
-    expect(analyticsHeatColor(10, range)).toBe("rgb(70 108 218)");
+    expect(analyticsHeatColor(0, range)).toBe("rgb(241 131 123)");
+    expect(analyticsHeatColor(5, range)).toBe("rgb(255 255 255)");
+    expect(analyticsHeatColor(10, range)).toBe("rgb(109 148 254)");
+    expect(
+      analyticsHeatColor(5, { minimum: 5, maximum: 5 }),
+    ).toBe("rgb(255 255 255)");
   });
 
   it("assigns owner colors, metric patterns, and opponent opacity", () => {

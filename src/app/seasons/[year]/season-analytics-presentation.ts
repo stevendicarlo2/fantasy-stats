@@ -36,14 +36,14 @@ export function analyticsHeatColor(
   }
 
   if (range.minimum === range.maximum) {
-    return "rgb(72 67 67)";
+    return "rgb(255 255 255)";
   }
 
   const position =
     (value - range.minimum) / (range.maximum - range.minimum);
-  const low = [218, 80, 84];
-  const middle = [72, 67, 67];
-  const high = [70, 108, 218];
+  const low = [241, 131, 123];
+  const middle = [255, 255, 255];
+  const high = [109, 148, 254];
   const start = position < 0.5 ? low : middle;
   const end = position < 0.5 ? middle : high;
   const segmentPosition =

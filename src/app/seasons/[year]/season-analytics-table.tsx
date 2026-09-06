@@ -333,6 +333,7 @@ export function SeasonAnalyticsTable({
                               value,
                               totalRanges.get(key) ?? null,
                             ),
+                            color: "#20252a",
                           }}
                           key={key}
                         >
@@ -361,6 +362,7 @@ export function SeasonAnalyticsTable({
                                   value,
                                   weeklyRanges.get(week) ?? null,
                                 ),
+                                color: "#20252a",
                               }
                         }
                         key={week}
