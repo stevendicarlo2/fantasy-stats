@@ -12,6 +12,7 @@ import {
   type AdjustmentMatchup,
   type ExistingAdjustment,
 } from "../../../adjustment-manager";
+import { SeasonYearSelector } from "../season-year-selector";
 
 interface AdjustmentPageProps {
   params: Promise<{ year: string }>;
@@ -30,9 +31,10 @@ async function loadAdjustmentPage(yearValue: string) {
 
   try {
     const runtime = await getWebRuntime();
-    const [stats, adjustments] = await Promise.all([
+    const [stats, adjustments, availableYears] = await Promise.all([
       runtime.seasonStatsService.getSeasonStats(year),
       runtime.matchupAdjustmentService.listSeasonAdjustments(year),
+      runtime.seasonStatsService.getAvailableSeasonYears(),
     ]);
 
     if (!stats || !adjustments) {
@@ -115,6 +117,7 @@ async function loadAdjustmentPage(yearValue: string) {
       year,
       matchups,
       existingAdjustments,
+      availableYears,
     };
   } catch (error) {
     return {
@@ -166,6 +169,13 @@ export default async function AdjustmentPage({
             Corrections remain separate from imported ESPN scores and
             immediately flow through effective scores, NP, and ANP.
           </p>
+        </div>
+        <div className="season-hero-actions">
+          <SeasonYearSelector
+            availableYears={pageData.availableYears}
+            currentYear={pageData.year}
+            pathSuffix="/adjustments"
+          />
         </div>
       </header>
       <AdjustmentManager

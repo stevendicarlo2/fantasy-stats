@@ -18,6 +18,8 @@ refresh updates imported scores without deleting its manual adjustments.
 ## Web workflow
 
 Open an imported season and select **Manage score adjustments**.
+The adjustment-page season selector lists every imported season and navigates
+directly to that season's adjustments.
 
 1. Choose a week, matchup, and franchise score.
 2. Enter only the amount to add, such as `-1.25` or `2.00`.
