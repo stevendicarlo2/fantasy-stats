@@ -638,7 +638,6 @@ const mutatingSqlKeywords = new Set([
   "PRAGMA",
   "REINDEX",
   "RELEASE",
-  "REPLACE",
   "ROLLBACK",
   "SAVEPOINT",
   "UPDATE",
@@ -724,6 +723,12 @@ function assertReadOnlyStatement(statement: string) {
   if (normalized.includes(";")) {
     throw new LibSqlDatabaseError(
       "Read-only queries must contain exactly one statement",
+    );
+  }
+
+  if (/\bREPLACE\b(?!\s*\()/i.test(normalized)) {
+    throw new LibSqlDatabaseError(
+      "Read-only queries cannot contain mutating REPLACE statements",
     );
   }
 

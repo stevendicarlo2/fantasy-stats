@@ -909,6 +909,25 @@ describe("libSQL database provider", () => {
     });
     await expect(
       provider.executeReadOnlyQuery({
+        statement:
+          "SELECT REPLACE('roster_lock', '_', ' ') AS failure_reason",
+      }),
+    ).resolves.toEqual({
+      columns: ["failure_reason"],
+      rows: [{ failure_reason: "roster lock" }],
+    });
+    await expect(
+      provider.executeReadOnlyQuery({
+        statement: `
+          WITH values_to_write AS (SELECT 'forbidden' AS name)
+          REPLACE INTO leagues (id, name)
+          SELECT ?, name FROM values_to_write
+        `,
+        parameters: [ids.league],
+      }),
+    ).rejects.toThrow("cannot contain mutating REPLACE statements");
+    await expect(
+      provider.executeReadOnlyQuery({
         statement: "SELECT missing_column FROM leagues",
       }),
     ).rejects.toThrow("no such column: missing_column");

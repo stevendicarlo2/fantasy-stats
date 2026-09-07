@@ -67,9 +67,33 @@ The console accepts one statement beginning with:
 - `WITH`
 - `EXPLAIN`
 
-Mutation and database-management keywords are rejected, including `INSERT`,
-`UPDATE`, `DELETE`, `CREATE`, `DROP`, `ALTER`, `PRAGMA`, and transaction
-statements. Multiple statements are also rejected.
+The validator rejects these mutation and database-management keywords:
+
+- `ALTER`
+- `ANALYZE`
+- `ATTACH`
+- `BEGIN`
+- `COMMIT`
+- `CREATE`
+- `DELETE`
+- `DETACH`
+- `DROP`
+- `INSERT`
+- `PRAGMA`
+- `REINDEX`
+- `RELEASE`
+- `ROLLBACK`
+- `SAVEPOINT`
+- `UPDATE`
+- `VACUUM`
+
+Generated queries must avoid those keywords. Multiple statements are also
+rejected. Keywords inside quoted values, quoted identifiers, and comments do
+not count.
+
+SQLite scalar functions remain available. In particular,
+`REPLACE(value, pattern, replacement)` is allowed for formatting query output,
+while mutating uses of `REPLACE` are rejected.
 
 Query parameters use `?` placeholders. Enter parameter values as a JSON array:
 
