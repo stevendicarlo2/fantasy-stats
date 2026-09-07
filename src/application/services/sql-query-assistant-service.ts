@@ -1,6 +1,7 @@
 import { SafeOperationalError } from "@/application/errors";
 import type {
   GeneratedSqlQuery,
+  SqlQueryGenerationUpdate,
   SqlQueryGenerator,
 } from "@/application/ports/sql-query-generator";
 
@@ -18,7 +19,11 @@ export class SqlQueryAssistantService {
     return this.availability;
   }
 
-  async generate(request: string): Promise<GeneratedSqlQuery> {
+  async generate(
+    request: string,
+    onUpdate?: (update: SqlQueryGenerationUpdate) => void,
+    signal?: AbortSignal,
+  ): Promise<GeneratedSqlQuery> {
     const trimmedRequest = request.trim();
 
     if (trimmedRequest.length === 0) {
@@ -33,10 +38,19 @@ export class SqlQueryAssistantService {
       );
     }
 
-    const generatedQuery = await this.generator.generate(trimmedRequest);
-    return normalizeSqlConsoleQuery(
+    const generatedQuery = await this.generator.generate(
+      trimmedRequest,
+      onUpdate,
+      signal,
+    );
+    const normalizedQuery = normalizeSqlConsoleQuery(
       generatedQuery.statement,
       generatedQuery.parameters,
     );
+
+    return {
+      response: generatedQuery.response,
+      ...normalizedQuery,
+    };
   }
 }

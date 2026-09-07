@@ -67,7 +67,7 @@ function parseParameters(value: string): SqlParameter[] {
   return parsed;
 }
 
-function formatResultMessage(result: SqlConsoleResult) {
+export function formatResultMessage(result: SqlConsoleResult) {
   return result.truncated
     ? `Query returned ${result.rowCount} rows; showing the first ${result.rows.length}`
     : `Query returned ${result.rowCount} ${

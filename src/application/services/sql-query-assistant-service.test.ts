@@ -22,6 +22,7 @@ describe("SqlQueryAssistantService", () => {
     const generator = {
       checkAvailability: vi.fn(),
       generate: vi.fn().mockResolvedValue({
+        response: "I generated a season query.",
         statement: "  SELECT year FROM seasons  ",
         parameters: [],
       }),
@@ -31,11 +32,34 @@ describe("SqlQueryAssistantService", () => {
     await expect(
       service.generate("  Show imported seasons  "),
     ).resolves.toEqual({
+      response: "I generated a season query.",
       statement: "SELECT year FROM seasons",
       parameters: [],
     });
     expect(generator.generate).toHaveBeenCalledWith(
       "Show imported seasons",
+      undefined,
+      undefined,
+    );
+  });
+
+  it("passes cancellation through to the generator", async () => {
+    const controller = new AbortController();
+    const generator = {
+      checkAvailability: vi.fn(),
+      generate: vi.fn().mockRejectedValue(
+        Object.assign(new Error("aborted"), { name: "AbortError" }),
+      ),
+    };
+    const service = new SqlQueryAssistantService(generator);
+
+    await expect(
+      service.generate("Show data", undefined, controller.signal),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(generator.generate).toHaveBeenCalledWith(
+      "Show data",
+      undefined,
+      controller.signal,
     );
   });
 
@@ -61,6 +85,7 @@ describe("SqlQueryAssistantService", () => {
     const service = new SqlQueryAssistantService({
       checkAvailability: vi.fn(),
       generate: vi.fn().mockResolvedValue({
+        response: "I generated a query.",
         statement: "SELECT 1",
         parameters: Array.from({ length: 51 }, () => null),
       }),

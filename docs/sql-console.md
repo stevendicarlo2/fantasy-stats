@@ -23,9 +23,26 @@ directory access, file writes, shell commands, web access, and subagents are
 disabled. The subprocess also receives only the operating-system, user-profile,
 certificate, and Copilot configuration variables needed to start; application
 credentials such as Turso and ESPN environment variables are not inherited.
-The response must be a strict JSON object containing a SQL statement and
-parameter array. The process is limited to 60 seconds and 64 KiB of output, and
-malformed output is reported as an error.
+Generation requests require same-origin JSON posts. Leaving the page aborts the
+browser stream and terminates the Copilot subprocess before a generated query
+can be executed.
+The browser keeps the submitted question visible as read-only text while
+generation is running. It streams sanitized progress messages for Copilot
+assistant updates, repository file reads, and migration discovery without
+exposing file contents or absolute local paths. Copilot's conversational
+explanation is streamed separately as it arrives. When generation finishes,
+the question editor is restored, the progress history and final explanation
+remain visible, and the generated SQL and parameters are loaded into their
+existing editors. **Generate & run** continues to execute the validated query
+and display its result table.
+
+The CLI uses JSONL streaming events internally. Its final model response is a
+strict JSON object containing a user-facing explanation, SQL statement, and
+parameter array; provider events and the machine-readable JSON are parsed at
+the server adapter boundary and are not displayed in the browser. The process
+is limited to 60 seconds and 2 MiB of JSONL protocol output. The final
+machine-readable response is still schema-validated, and malformed output is
+reported as an error.
 
 This feature is local-only. The `copilot` executable must be available on the
 server process's `PATH` and authenticated for the local user. A remotely hosted

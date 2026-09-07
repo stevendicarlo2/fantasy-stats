@@ -72,6 +72,7 @@ describe("executeSqlConsoleAction", () => {
   it("generates a query without executing it", async () => {
     const assistant = {
       generate: vi.fn().mockResolvedValue({
+        response: "I generated a season query.",
         statement: "SELECT year FROM seasons WHERE year = ?",
         parameters: [2017],
       }),
@@ -99,6 +100,7 @@ describe("executeSqlConsoleAction", () => {
 
   it("executes a generated query through the console service", async () => {
     const query = {
+      response: "I generated a season query.",
       statement: "SELECT year FROM seasons WHERE year = ?",
       parameters: [2017],
     };
@@ -141,6 +143,7 @@ describe("executeSqlConsoleAction", () => {
       executeSqlQueryAssistantAction(formData, true, () => ({
         assistant: {
           generate: vi.fn().mockResolvedValue({
+            response: "I cannot safely delete seasons, so review this query.",
             statement: "DELETE FROM seasons",
             parameters: [],
           }),
