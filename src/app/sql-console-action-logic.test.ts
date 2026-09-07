@@ -107,6 +107,24 @@ describe("executeSqlConsoleAction", () => {
     });
   });
 
+  it("returns unexpected SQL execution errors to the user", async () => {
+      const formData = new FormData();
+      formData.set("statement", "SELECT missing_column FROM seasons");
+      formData.set("parameters", "[]");
+
+      await expect(
+        executeSqlConsoleAction(formData, () => ({
+          execute: vi
+            .fn()
+            .mockRejectedValue(new Error("no such column: missing_column")),
+        })),
+      ).resolves.toMatchObject({
+        status: "error",
+        message: "no such column: missing_column",
+        result: null,
+    });
+  });
+
   it("generates a query without executing it", async () => {
     const assistant = {
       generate: vi.fn().mockResolvedValue({

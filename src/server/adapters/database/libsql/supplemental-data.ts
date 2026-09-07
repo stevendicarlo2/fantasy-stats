@@ -382,7 +382,7 @@ export async function replacePlayerStatsData(
         INSERT INTO nfl_games (
           id,
           season_year,
-          season_type,
+          game_type,
           week,
           starts_at,
           home_nfl_team_id,
@@ -394,7 +394,7 @@ export async function replacePlayerStatsData(
       args: [
         game.id,
         game.seasonYear,
-        game.seasonType,
+        game.gameType,
         game.week,
         game.startsAt,
         game.homeNflTeamId,

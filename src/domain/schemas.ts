@@ -803,7 +803,7 @@ export const transactionImportSnapshotSchema: z.ZodType<TransactionImportSnapsho
 export const nflGameSchema: z.ZodType<NflGame> = z.object({
   id: canonicalIdSchema,
   seasonYear: seasonYearSchema,
-  seasonType: z.int().positive(),
+  gameType: z.int().positive(),
   week: weekSchema,
   startsAt: isoDateTimeSchema,
   homeNflTeamId: canonicalIdSchema,

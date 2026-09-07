@@ -162,6 +162,7 @@ describe("libSQL database provider", () => {
         "0006_season_franchise_names.sql",
         "0007_season_playoff_team_count.sql",
         "0008_matchup_roster_data.sql",
+        "0009_rename_nfl_game_type.sql",
       ],
     });
     await expect(provider.runMigrations()).resolves.toEqual({
@@ -433,7 +434,7 @@ describe("libSQL database provider", () => {
             {
               id: ids.game,
               seasonYear: 2025,
-              seasonType: 2,
+              gameType: 2,
               week: 1,
               startsAt: "2025-09-07T17:00:00Z",
               homeNflTeamId: ids.nflTeam,
@@ -906,6 +907,11 @@ describe("libSQL database provider", () => {
       columns: ["count"],
       rows: [{ count: 0 }],
     });
+    await expect(
+      provider.executeReadOnlyQuery({
+        statement: "SELECT missing_column FROM leagues",
+      }),
+    ).rejects.toThrow("no such column: missing_column");
   });
 
   it("rejects blank read-only statements", async () => {

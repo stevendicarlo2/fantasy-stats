@@ -1101,6 +1101,11 @@ button:disabled {
   color: #f2d18c;
 }
 
+.action-message.running {
+  background: rgb(170 132 47 / 30%);
+  color: #f2d18c;
+}
+
 .action-message.error {
   background: rgb(151 58 58 / 25%);
   color: #ffb2b2;

@@ -1278,6 +1278,12 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
       });
       await transaction.commit();
       return readOnlyQueryResultSchema.parse(mapQueryResult(result));
+    } catch (error) {
+      throw new LibSqlDatabaseError(
+        error instanceof Error
+          ? error.message
+          : "The read-only SQL query failed",
+      );
     } finally {
       transaction.close();
     }

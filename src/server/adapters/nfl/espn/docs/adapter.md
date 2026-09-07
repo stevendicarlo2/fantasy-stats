@@ -2,6 +2,8 @@
 
 The public ESPN NFL adapter implements the application-owned `NflSource`
 interface. It does not receive or send private fantasy-league credentials.
+The canonical `game_type` field stores ESPN's numeric NFL game classification;
+current imports request regular-season games (`game_type = 2`).
 
 ## Requests
 

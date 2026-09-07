@@ -581,7 +581,7 @@ export class EspnNflSource implements NflSource {
           game: {
             id: nflGameId,
             seasonYear: input.year,
-            seasonType: event.season.type,
+            gameType: event.season.type,
             week: event.week.number,
             startsAt: event.date,
             homeNflTeamId: teamsByExternalId.get(home.team.id)!,

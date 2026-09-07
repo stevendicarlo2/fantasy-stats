@@ -86,6 +86,13 @@ WHERE season_year = ?;
 Parameters may contain strings, finite numbers, and `null`. The console accepts
 at most 50 parameters and displays at most the first 500 result rows.
 
+Submitting a query immediately replaces any previous result or error in the
+results panel. Copilot requests show **Generating...** while the query is being
+created, then **Running query...** once a generated query begins execution.
+Manual submissions show **Running query...** immediately. Database syntax and
+execution failures are returned in the results panel so the statement can be
+corrected directly.
+
 ## Starter queries
 
 The page includes editable examples for:

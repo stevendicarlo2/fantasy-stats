@@ -114,7 +114,9 @@ export async function executeSqlConsoleAction(
       message:
         error instanceof SafeOperationalError
           ? error.message
-          : "The SQL query failed unexpectedly",
+          : error instanceof Error
+            ? error.message
+            : "The SQL query failed unexpectedly",
       result: null,
       generatedQuery: null,
       formattedStatement,
@@ -174,7 +176,9 @@ export async function executeSqlQueryAssistantAction(
       message:
         error instanceof SafeOperationalError
           ? error.message
-          : "Copilot query generation failed unexpectedly",
+          : generatedQuery && error instanceof Error
+            ? error.message
+            : "Copilot query generation failed unexpectedly",
       result: null,
       generatedQuery,
       formattedStatement: null,

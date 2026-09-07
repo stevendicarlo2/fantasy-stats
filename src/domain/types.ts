@@ -261,7 +261,7 @@ export interface TransactionImportSnapshot {
 export interface NflGame {
   id: CanonicalId;
   seasonYear: number;
-  seasonType: number;
+  gameType: number;
   week: number;
   startsAt: IsoDateTime;
   homeNflTeamId: CanonicalId;
