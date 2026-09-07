@@ -54,15 +54,21 @@ NP and ANP are derived values, not imported ESPN values or manually maintained t
 
 ## Initial scope
 
-The minimum useful ESPN dataset is:
+The canonical ESPN dataset includes:
 
 - League and season information
 - League settings needed by the application, including team count and regular-season boundaries
 - Franchises and their known names
 - Weekly head-to-head matchups
 - Final weekly team scores
+- Weekly roster snapshots with actual and projected fantasy points
+- Canonical players, NFL teams, and season-scoped team/position history
+- Draft picks, completed roster-changing transactions, and failed waiver claims
+- Public NFL games and fantasy-relevant player game statistics
 
-Weekly rosters, individual players, transactions, and other discoverable ESPN datasets are intentionally deferred.
+The supplemental datasets are independently refreshable. Historical weekly
+rosters, structured transactions, drafts, and player-game statistics are
+unavailable for 2017; the core matchup and score dataset remains supported.
 
 ## Application shape
 
@@ -261,10 +267,19 @@ Expose manual season-level operations:
 
 - `importSeason(year)` for historical backfill
 - `refreshSeason(year)` for idempotently updating an existing season
+- Targeted roster, transaction/draft, and player-stat retries
 
 These names describe the desired application behavior, not a required final TypeScript signature.
 
-The local web app should provide explicit controls and progress/error reporting. The same ingestion service must also be callable by a CLI command for recovery, scripting, and debugging.
+Core data must succeed before supplemental imports begin. Roster and
+transaction imports run independently; player statistics run afterward so
+players discovered by either source are included. Each dataset is replaced
+atomically, and a failed supplemental refresh retains the prior snapshot
+without rolling back successful sibling datasets.
+
+The local web app should provide explicit controls, per-dataset status, and
+progress/error reporting. The same ingestion services may also be called by
+CLI commands for recovery, scripting, and debugging.
 
 Do not add scheduled imports initially. Week-specific fetching may be an internal ESPN adapter optimization, but week-level public controls are not required.
 
@@ -346,7 +361,6 @@ Rejected because derived scoring must be directly queryable through SQL. Cross-p
 - Exact table names and relationships beyond the required conceptual separation
 - Exact database-interface method signatures
 - Detailed UI navigation and visual design
-- Player, roster, and transaction ingestion
 - Automated import scheduling
 - Automated backups
 - Hosting the Next.js application

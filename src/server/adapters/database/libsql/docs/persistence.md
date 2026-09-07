@@ -26,6 +26,27 @@ The initial application supports one league, so a season year is unique across
 the database. Franchise names accumulate as known names rather than being
 deleted during a refresh.
 
+Migration `0008_matchup_roster_data.sql` adds:
+
+| Table | Purpose |
+| --- | --- |
+| `matchup_scoring_periods` | Scoring weeks belonging to a matchup period |
+| `players` | Canonical athletes and synthetic team defenses |
+| `nfl_teams` | Canonical NFL team identity |
+| `weekly_rosters` | Per-franchise weekly snapshot state |
+| `weekly_roster_entries` | Lineup slots and fantasy points |
+| `player_nfl_team_ranges` | Season-scoped NFL team history |
+| `player_position_ranges` | Season-scoped position history |
+| `draft_picks` | Canonical draft results |
+| `fantasy_transactions` | Executed moves and failed waivers |
+| `fantasy_transaction_items` | Players and ownership changes in a transaction |
+| `nfl_games` | Public NFL event metadata |
+| `player_game_stats` | Fantasy-relevant box-score and play-derived statistics |
+
+The migration also makes import audits dataset-aware. The supported datasets
+are `core`, `rosters`, `transactions`, and `player_stats`; an audit can be
+`unavailable` when the provider does not expose the requested history.
+
 ## Import transactions
 
 `startImportRun` records an attempt before source retrieval or persistence.
@@ -45,6 +66,12 @@ transaction. It:
 
 Any failure rolls back the entire snapshot update. `failImportRun` separately
 marks a running audit record failed with explicit error details.
+
+Roster, transaction/draft, and player-stat commits use separate replacement
+transactions. A successful dataset does not depend on a sibling transaction,
+and a failed replacement leaves that dataset's previous snapshot intact.
+Source mappings are retained across replacements so canonical UUIDs remain
+stable. Field-goal distance arrays are stored as validated JSON text.
 
 ## Read validation
 

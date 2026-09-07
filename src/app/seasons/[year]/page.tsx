@@ -153,6 +153,11 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
                         <span className={`phase ${matchup.phase}`}>
                           {matchup.phase}
                         </span>
+                        <Link
+                          href={`/seasons/${stats.year}/matchups/${matchup.id}`}
+                        >
+                          View rosters
+                        </Link>
                       </header>
                       <div className="table-wrap">
                         <table>

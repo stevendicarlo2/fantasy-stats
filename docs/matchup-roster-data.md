@@ -533,7 +533,9 @@ action.
 - Re-imports are idempotent.
 - Replace the selected season's imported dataset atomically.
 - Reuse source mappings so canonical IDs remain stable.
-- Remove rows no longer present in the refreshed canonical snapshot.
+- Remove dataset rows no longer present in the refreshed canonical snapshot.
+- Retain source mappings so removed entities recover the same canonical ID if
+  they reappear in a later refresh.
 - Preserve manual matchup adjustments.
 - Preserve successfully imported sibling datasets when another dataset fails.
 - Replace provisional current-week roster data on refresh.

@@ -5,6 +5,14 @@ import { SafeOperationalError } from "@/application/errors";
 import { getWebRuntime } from "@/server/runtime/web-runtime";
 
 import { ImportForm } from "./import-form";
+import { DatasetRetryForm } from "./dataset-retry-form";
+
+const importDatasets = [
+  ["core", "Core"],
+  ["rosters", "Rosters"],
+  ["transactions", "Transactions"],
+  ["player_stats", "Player stats"],
+] as const;
 
 async function loadPageData() {
   try {
@@ -78,8 +86,10 @@ export default async function Home() {
             <p className="panel-kicker">Data management</p>
             <h2>Import or refresh a season</h2>
             <p>
-              Import creates a missing season. Refresh updates an existing
-              season while preserving manual score adjustments.
+              Import creates core season history and all available
+              supplemental datasets. Refresh replaces provider data while
+              preserving manual score adjustments and any prior supplemental
+              snapshot whose refresh fails.
             </p>
             <ImportForm years={dashboard.availableYears} />
           </article>
@@ -98,6 +108,7 @@ export default async function Home() {
                       <th>Teams</th>
                       <th>Matchups</th>
                       <th>Scores</th>
+                      <th>Supplemental datasets</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -111,6 +122,40 @@ export default async function Home() {
                         <td>{season.teamCount}</td>
                         <td>{season.matchupCount}</td>
                         <td>{season.scoreCount}</td>
+                        <td>
+                          <div className="dataset-status-list">
+                            {importDatasets.map(([dataset, label]) => {
+                              const status = season.datasetStatuses.find(
+                                (candidate) =>
+                                  candidate.dataset === dataset,
+                              ) ?? {
+                                dataset,
+                                status: "not_imported" as const,
+                                completedAt: null,
+                                message: null,
+                              };
+
+                              return (
+                                <div className="dataset-status" key={dataset}>
+                                  <span>
+                                    {label}:{" "}
+                                    <strong className={`status ${status.status}`}>
+                                      {status.status.replace("_", " ")}
+                                    </strong>
+                                  </span>
+                                  {dataset !== "core" &&
+                                  (status.status === "failed" ||
+                                    status.status === "not_imported") ? (
+                                    <DatasetRetryForm
+                                      dataset={dataset}
+                                      year={season.year}
+                                    />
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -132,6 +177,7 @@ export default async function Home() {
                   <tr>
                     <th>Season</th>
                     <th>Operation</th>
+                    <th>Dataset</th>
                     <th>Status</th>
                     <th>Started</th>
                     <th>Details</th>
@@ -142,6 +188,7 @@ export default async function Home() {
                     <tr key={run.id}>
                       <td>{run.seasonYear}</td>
                       <td>{run.operation}</td>
+                      <td>{run.dataset ?? "core"}</td>
                       <td>
                         <span className={`status ${run.status}`}>
                           {run.status}

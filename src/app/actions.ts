@@ -23,10 +23,10 @@ export async function runSeasonAction(
 ): Promise<ImportActionState> {
   const result = await executeImportAction(formData, async () => {
     const runtime = await getWebRuntime();
-    return runtime.importService;
+    return runtime.seasonDataImportService;
   });
 
-  if (result.status === "success") {
+  if (result.status === "success" || result.status === "partial") {
     revalidatePath("/");
   }
 
