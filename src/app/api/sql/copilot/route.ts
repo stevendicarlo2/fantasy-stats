@@ -112,6 +112,7 @@ export async function POST(request: Request) {
 
         if (body.runGeneratedQuery) {
           generationAbortController.signal.throwIfAborted();
+          send({ type: "query-running" });
 
           try {
             const result = await runtime.sqlConsoleService.execute(
@@ -130,7 +131,9 @@ export async function POST(request: Request) {
               message:
                 error instanceof SafeOperationalError
                   ? error.message
-                  : "The generated SQL query failed unexpectedly",
+                  : error instanceof Error
+                    ? error.message
+                    : "The generated SQL query failed unexpectedly",
             };
           }
         }

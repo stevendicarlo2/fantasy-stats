@@ -3,11 +3,18 @@ import type {
   FranchiseDisplayName,
   ImportOperation,
   ImportRun,
+  ImportDataset,
   IsoDateTime,
   MatchupPhase,
+  MatchupRosterDetail,
   MatchupOverride,
+  PlayerStatsImportSnapshot,
+  RelevantPlayer,
+  RosterImportSnapshot,
+  SeasonDatasetStatus,
   SeasonImportSnapshot,
   SourceMapping,
+  TransactionImportSnapshot,
 } from "@/domain/types";
 
 export interface MigrationResult {
@@ -31,6 +38,7 @@ export interface StartImportRunInput {
   id: CanonicalId;
   provider: string;
   operation: ImportOperation;
+  dataset?: ImportDataset;
   seasonYear: number;
   startedAt: IsoDateTime;
 }
@@ -45,6 +53,30 @@ export interface FailImportRunInput {
   importRunId: CanonicalId;
   completedAt: IsoDateTime;
   errorMessage: string;
+}
+
+export interface MarkImportUnavailableInput {
+  importRunId: CanonicalId;
+  completedAt: IsoDateTime;
+  reason: string;
+}
+
+export interface CommitRosterImportInput {
+  importRunId: CanonicalId;
+  snapshot: RosterImportSnapshot;
+  completedAt: IsoDateTime;
+}
+
+export interface CommitTransactionImportInput {
+  importRunId: CanonicalId;
+  snapshot: TransactionImportSnapshot;
+  completedAt: IsoDateTime;
+}
+
+export interface CommitPlayerStatsImportInput {
+  importRunId: CanonicalId;
+  snapshot: PlayerStatsImportSnapshot;
+  completedAt: IsoDateTime;
 }
 
 export interface WeeklyTeamResult {
@@ -77,14 +109,32 @@ export interface DatabaseProvider {
 
   startImportRun(input: StartImportRunInput): Promise<ImportRun>;
   commitSeasonImport(input: CommitSeasonImportInput): Promise<ImportRun>;
+  commitRosterImport(input: CommitRosterImportInput): Promise<ImportRun>;
+  commitTransactionImport(
+    input: CommitTransactionImportInput,
+  ): Promise<ImportRun>;
+  commitPlayerStatsImport(
+    input: CommitPlayerStatsImportInput,
+  ): Promise<ImportRun>;
   failImportRun(input: FailImportRunInput): Promise<ImportRun>;
+  markImportUnavailable(
+    input: MarkImportUnavailableInput,
+  ): Promise<ImportRun>;
   listImportRuns(limit?: number): Promise<ImportRun[]>;
+  listSeasonDatasetStatuses(
+    seasonYear: number,
+  ): Promise<SeasonDatasetStatus[]>;
 
   listImportedSeasonYears(): Promise<number[]>;
   hasSeasonImport(seasonYear: number): Promise<boolean>;
   getSeasonImportSnapshot(
     seasonYear: number,
   ): Promise<SeasonImportSnapshot | null>;
+  listRelevantPlayers(seasonYear: number): Promise<RelevantPlayer[]>;
+  getMatchupRosterDetail(
+    seasonYear: number,
+    matchupId: CanonicalId,
+  ): Promise<MatchupRosterDetail | null>;
   listWeeklyTeamResults(seasonYear: number): Promise<WeeklyTeamResult[]>;
 
   listMatchupOverrides(seasonId: CanonicalId): Promise<MatchupOverride[]>;

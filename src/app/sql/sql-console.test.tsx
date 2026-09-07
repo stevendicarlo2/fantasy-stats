@@ -19,6 +19,7 @@ vi.mock("../actions", () => ({
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.clearAllMocks();
 });
 
 describe("SqlConsole Copilot generation", () => {
@@ -91,6 +92,7 @@ describe("SqlConsole Copilot generation", () => {
     ).toBeNull();
     expect(view.getByText("Show the latest season")).toBeTruthy();
     await waitFor(() => {
+      expect(view.getByText("Generating...")).toBeTruthy();
       expect(view.getByText("I am building")).toBeTruthy();
       expect(
         view.getByText("Reading docs/sql-console.md"),
@@ -136,6 +138,121 @@ describe("SqlConsole Copilot generation", () => {
           ) as HTMLTextAreaElement
         ).value,
       ).toBe("SELECT MAX(year) FROM seasons");
+    });
+  });
+
+  it("clears an earlier error while generating a subsequent query", async () => {
+    vi.mocked(runSqlConsoleAction).mockResolvedValue({
+      status: "error",
+      message: "no such column: old_column",
+      result: null,
+      generatedQuery: null,
+      formattedStatement: "SELECT old_column FROM seasons",
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise(() => {
+            // Keep generation pending so the intermediate state is observable.
+          }),
+      ),
+    );
+
+    const view = render(<SqlConsole copilotAvailable />);
+    fireEvent.submit(
+      view.getByLabelText("SQL statement").closest("form")!,
+    );
+    await waitFor(() => {
+      expect(view.getByText("no such column: old_column")).toBeTruthy();
+    });
+
+    fireEvent.change(
+      view.getByLabelText("Ask Copilot for a query"),
+      { target: { value: "Try another query" } },
+    );
+    fireEvent.click(
+      view.getByRole("button", { name: "Generate query" }),
+    );
+
+    await waitFor(() => {
+      expect(view.getByText("Generating...")).toBeTruthy();
+      expect(view.queryByText("no such column: old_column")).toBeNull();
+    });
+  });
+
+  it("shows running query after generation completes", async () => {
+    let finishStream:
+      | ((value: {
+          done: boolean;
+          value: Uint8Array;
+        }) => void)
+      | undefined;
+    const encoder = new TextEncoder();
+    const reads = [
+      Promise.resolve({
+        done: false,
+        value: encoder.encode(
+          `${JSON.stringify({ type: "query-running" })}\n`,
+        ),
+      }),
+      new Promise<{
+        done: boolean;
+        value: Uint8Array;
+      }>((resolve) => {
+        finishStream = resolve;
+      }),
+    ];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        body: {
+          getReader: () => ({
+            read: vi.fn(() => reads.shift()),
+          }),
+        },
+      }),
+    );
+
+    const view = render(<SqlConsole copilotAvailable />);
+    fireEvent.change(
+      view.getByLabelText("Ask Copilot for a query"),
+      { target: { value: "Generate and run a query" } },
+    );
+    fireEvent.click(
+      view.getByRole("button", { name: "Generate & run" }),
+    );
+
+    await waitFor(() => {
+      expect(view.getByText("Running query...")).toBeTruthy();
+    });
+
+    await act(async () => {
+      finishStream?.({
+        done: false,
+        value: encoder.encode(
+          `${JSON.stringify({
+            type: "complete",
+            response: "Done",
+            state: {
+              status: "success",
+              message: "Query generated. Query returned 0 rows",
+              result: {
+                columns: ["value"],
+                rows: [],
+                rowCount: 0,
+                truncated: false,
+              },
+              generatedQuery: {
+                statement: "SELECT 1",
+                parameters: "[]",
+              },
+              formattedStatement: null,
+            },
+          })}\n`,
+        ),
+      });
     });
   });
 
@@ -232,6 +349,66 @@ describe("SqlConsole Copilot generation", () => {
   });
 
   describe("SqlConsole manual queries", () => {
+    it("replaces previous results with a running indicator", async () => {
+      let finishSecondQuery:
+        | ((
+            state: Awaited<
+              ReturnType<typeof runSqlConsoleAction>
+            >,
+          ) => void)
+        | undefined;
+      vi.mocked(runSqlConsoleAction)
+        .mockResolvedValueOnce({
+          status: "success",
+          message: "Query returned 1 row",
+          result: {
+            columns: ["value"],
+            rows: [{ value: "old-result-value" }],
+            rowCount: 1,
+            truncated: false,
+          },
+          generatedQuery: null,
+          formattedStatement: "SELECT\n  1",
+        })
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            finishSecondQuery = resolve;
+          }),
+        );
+
+      const view = render(<SqlConsole copilotAvailable={false} />);
+      const form = view
+        .getByLabelText("SQL statement")
+        .closest("form")!;
+
+      fireEvent.submit(form);
+      await waitFor(() => {
+        expect(view.getByText("old-result-value")).toBeTruthy();
+      });
+
+      fireEvent.submit(form);
+
+      await waitFor(() => {
+        expect(view.getByText("Running query...")).toBeTruthy();
+        expect(view.queryByText("old-result-value")).toBeNull();
+      });
+
+      await act(async () => {
+        finishSecondQuery?.({
+          status: "success",
+          message: "Query returned 0 rows",
+          result: {
+            columns: ["value"],
+            rows: [],
+            rowCount: 0,
+            truncated: false,
+          },
+          generatedQuery: null,
+          formattedStatement: "SELECT\n  1",
+        });
+      });
+    });
+
     it("replaces a submitted statement with its formatted version", async () => {
       vi.mocked(runSqlConsoleAction).mockResolvedValue({
         status: "success",

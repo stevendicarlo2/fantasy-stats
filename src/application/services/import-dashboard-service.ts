@@ -1,11 +1,13 @@
 import type { DatabaseProvider } from "@/application/ports/database-provider";
 import type { ImportRun } from "@/domain/types";
+import type { SeasonDatasetStatus } from "@/domain/types";
 
 export interface ImportedSeasonSummary {
   year: number;
   teamCount: number;
   matchupCount: number;
   scoreCount: number;
+  datasetStatuses: SeasonDatasetStatus[];
 }
 
 export interface ImportDashboard {
@@ -16,7 +18,9 @@ export interface ImportDashboard {
 
 type ImportDashboardDatabase = Pick<
   DatabaseProvider,
-  "getSeasonImportSnapshot" | "listImportRuns"
+  | "getSeasonImportSnapshot"
+  | "listImportRuns"
+  | "listSeasonDatasetStatuses"
 >;
 
 export class ImportDashboardService {
@@ -41,12 +45,15 @@ export class ImportDashboardService {
     const [snapshots, recentRuns] = await Promise.all([
       Promise.all(
         availableYears.map((year) =>
-          this.database.getSeasonImportSnapshot(year),
+          Promise.all([
+            this.database.getSeasonImportSnapshot(year),
+            this.database.listSeasonDatasetStatuses(year),
+          ]),
         ),
       ),
       this.database.listImportRuns(10),
     ]);
-    const importedSeasons = snapshots.flatMap((snapshot) =>
+    const importedSeasons = snapshots.flatMap(([snapshot, statuses]) =>
       snapshot
         ? [
             {
@@ -54,6 +61,7 @@ export class ImportDashboardService {
               teamCount: snapshot.season.teamCount,
               matchupCount: snapshot.matchups.length,
               scoreCount: snapshot.scores.length,
+              datasetStatuses: statuses,
             },
           ]
         : [],

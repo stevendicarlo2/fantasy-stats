@@ -1,8 +1,8 @@
 # ESPN Fantasy Source Adapter
 
-The ESPN adapter implements the application-owned `FantasySource` interface.
-It retrieves private league data, validates the undocumented response, and
-returns a canonical `SeasonImportSnapshot`.
+The ESPN adapter implements the application-owned core, roster, and
+transaction fantasy-source interfaces. It retrieves private league data,
+validates the undocumented responses, and returns canonical snapshots.
 
 ## Endpoints
 
@@ -21,6 +21,12 @@ For 2017 and earlier:
 Legacy responses are arrays containing one league object. The adapter requests
 settings, teams, matchups, matchup scores, and scoreboard views.
 
+For 2018 and later, weekly roster snapshots use `mRoster` for each scoring
+period. `mDraftDetail` supplies draft results and `mTransactions2` supplies
+completed roster changes and failed waiver claims. The 2017 legacy endpoint
+does not expose reliable historical weekly rosters or structured transactions,
+so roster, transaction, and draft imports explicitly report unavailable.
+
 ## Authentication
 
 Private-league requests send `espn_s2` and `SWID` cookies from validated
@@ -35,6 +41,9 @@ Provider mappings use league-scoped external IDs:
 - Season: `{leagueId}:{year}`
 - Franchise: `{leagueId}:{teamId}`
 - Matchup: `{leagueId}:{year}:{matchupId}`
+- Player: ESPN's global numeric athlete ID
+- Team defense player: `team-defense:{proTeamId}`
+- NFL team: ESPN's numeric `proTeamId`
 
 Live verification across 2017–2025 confirmed that ESPN team IDs remain stable
 for continuing franchises, including the league's expansion from 10 to 14
@@ -76,6 +85,18 @@ adapter writes only a redacted structural diagnostic containing validation
 paths, top-level keys, and record counts under the gitignored
 `.diagnostics/espn/` directory. It does not write team names, owner names,
 scores, cookies, or raw payload content.
+
+Weekly roster mapping treats `statSourceId = 0` as actual points,
+`statSourceId = 1` as projected points, and `statSplitTypeId = 1` as the
+weekly split. Missing projections remain `null`. Weekly snapshots are the
+authority for fantasy ownership; player NFL-team and position observations are
+collapsed into season-scoped ranges and split across observation gaps.
+
+Transaction mapping includes executed free-agent moves, waivers, trades, and
+ownership-changing administrative actions, plus failed waiver attempts.
+Pending or canceled waivers, incomplete trade negotiation records, and
+slot-only lineup activity are excluded. Linked trade workflow records collapse
+to one canonical executed trade.
 
 ## Verification
 

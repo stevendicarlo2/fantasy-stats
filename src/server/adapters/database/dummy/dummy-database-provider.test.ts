@@ -15,6 +15,8 @@ const ids = {
   matchup: "10000000-0000-4000-8000-000000000005",
   importRun: "10000000-0000-4000-8000-000000000006",
   override: "10000000-0000-4000-8000-000000000007",
+  rosterRun: "10000000-0000-4000-8000-000000000008",
+  player: "10000000-0000-4000-8000-000000000009",
 };
 
 function createSnapshot(): SeasonImportSnapshot {
@@ -140,6 +142,57 @@ describe("DummyDatabaseProvider", () => {
       franchiseId: ids.home,
       displayName: "Person One",
     });
+  });
+
+  it("returns source mappings discovered by supplemental imports", async () => {
+    const provider = new DummyDatabaseProvider();
+    await provider.startImportRun({
+      id: ids.rosterRun,
+      provider: "espn",
+      operation: "refresh",
+      dataset: "rosters",
+      seasonYear: 2025,
+      startedAt: "2026-08-23T22:00:00Z",
+    });
+    await provider.commitRosterImport({
+      importRunId: ids.rosterRun,
+      completedAt: "2026-08-23T22:01:00Z",
+      snapshot: {
+        seasonId: ids.season,
+        seasonYear: 2025,
+        players: [
+          {
+            id: ids.player,
+            kind: "athlete",
+            displayName: "Synthetic Player",
+            firstName: "Synthetic",
+            lastName: "Player",
+          },
+        ],
+        nflTeams: [],
+        rosters: [],
+        entries: [],
+        nflTeamRanges: [],
+        positionRanges: [],
+        sourceMappings: [
+          {
+            provider: "espn",
+            entityType: "player",
+            canonicalId: ids.player,
+            externalId: "101",
+          },
+        ],
+      },
+    });
+
+    await expect(provider.listSourceMappings("espn")).resolves.toEqual([
+      {
+        provider: "espn",
+        entityType: "player",
+        canonicalId: ids.player,
+        externalId: "101",
+      },
+    ]);
   });
 
   it("rejects unsupported arbitrary SQL explicitly", async () => {

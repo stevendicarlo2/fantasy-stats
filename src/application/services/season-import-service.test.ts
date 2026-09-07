@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SafeOperationalError } from "@/application/errors";
-import type { DatabaseProvider } from "@/application/ports/database-provider";
 import type { FantasySource } from "@/application/ports/fantasy-source";
 import type {
   ImportRun,
@@ -78,6 +77,7 @@ function createRunningImportRun(): ImportRun {
     id: ids.importRun,
     provider: "synthetic",
     operation: "import",
+    dataset: "core",
     seasonYear: 2025,
     status: "running",
     startedAt: "2026-08-23T22:00:00.000Z",
@@ -127,7 +127,7 @@ describe("SeasonImportService", () => {
     saveMatchupOverride: vi.fn(),
     deleteMatchupOverride: vi.fn(),
     executeReadOnlyQuery: vi.fn(),
-  } satisfies DatabaseProvider;
+  };
   const source = {
     provider: "synthetic",
     fetchSeason,
@@ -175,6 +175,7 @@ describe("SeasonImportService", () => {
       id: ids.importRun,
       provider: "synthetic",
       operation: "import",
+      dataset: "core",
       seasonYear: 2025,
       startedAt: "2026-08-23T22:00:00.000Z",
     });

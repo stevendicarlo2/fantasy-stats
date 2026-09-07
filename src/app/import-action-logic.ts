@@ -1,8 +1,11 @@
 import { SafeOperationalError } from "@/application/errors";
-import type { SeasonImportService } from "@/application/services/season-import-service";
+import type {
+  SeasonDataImportResult,
+  SeasonDataImportService,
+} from "@/application/services/season-data-import-service";
 
 export interface ImportActionState {
-  status: "idle" | "success" | "error";
+  status: "idle" | "success" | "partial" | "error";
   message: string;
 }
 
@@ -12,17 +15,27 @@ export const initialImportActionState: ImportActionState = {
 };
 
 type ImportService = Pick<
-  SeasonImportService,
-  "importSeason" | "refreshSeason"
+  SeasonDataImportService,
+  | "importSeason"
+  | "refreshSeason"
+  | "retryPlayerStats"
+  | "retryRosters"
+  | "retryTransactions"
 >;
 
 function parseActionInput(formData: FormData) {
   const operation = formData.get("operation");
   const yearValue = formData.get("year");
 
-  if (operation !== "import" && operation !== "refresh") {
+  if (
+    operation !== "import" &&
+    operation !== "refresh" &&
+    operation !== "retry-rosters" &&
+    operation !== "retry-transactions" &&
+    operation !== "retry-player-stats"
+  ) {
     throw new SafeOperationalError(
-      "Choose whether to import or refresh the season",
+      "Choose a valid season data operation",
     );
   }
 
@@ -44,6 +57,33 @@ function parseActionInput(formData: FormData) {
   return { operation, year };
 }
 
+function summarizeFullImport(
+  operation: "import" | "refresh",
+  year: number,
+  result: SeasonDataImportResult,
+): ImportActionState {
+  const supplemental = [
+    ["rosters", result.rosters],
+    ["transactions", result.transactions],
+    ["player stats", result.playerStats],
+  ] as const;
+  const failures = supplemental
+    .filter(([, outcome]) => outcome.status === "rejected")
+    .map(([dataset]) => dataset);
+
+  return failures.length === 0
+    ? {
+        status: "success",
+        message: `Season ${year} ${operation} succeeded`,
+      }
+    : {
+        status: "partial",
+        message: `Season ${year} core data succeeded, but ${failures.join(
+          " and ",
+        )} failed. Existing supplemental data was preserved.`,
+      };
+}
+
 export async function executeImportAction(
   formData: FormData,
   getService: () => ImportService | Promise<ImportService>,
@@ -51,14 +91,26 @@ export async function executeImportAction(
   try {
     const { operation, year } = parseActionInput(formData);
     const service = await getService();
-    const importRun =
-      operation === "import"
-        ? await service.importSeason(year)
-        : await service.refreshSeason(year);
+    if (operation === "import" || operation === "refresh") {
+      const result =
+        operation === "import"
+          ? await service.importSeason(year)
+          : await service.refreshSeason(year);
+
+      return summarizeFullImport(operation, year, result);
+    }
+
+    const retry =
+      operation === "retry-rosters"
+        ? service.retryRosters(year)
+        : operation === "retry-transactions"
+          ? service.retryTransactions(year)
+          : service.retryPlayerStats(year);
+    const run = await retry;
 
     return {
       status: "success",
-      message: `Season ${year} ${operation} succeeded (run ${importRun.id})`,
+      message: `Season ${year} ${run.dataset?.replace("_", " ")} retry ${run.status}`,
     };
   } catch (error) {
     return {

@@ -26,6 +26,8 @@ interface SqlConsoleProps {
   copilotAvailable: boolean;
 }
 
+type QueryActivity = "generating" | "running";
+
 export function SqlConsole({ copilotAvailable }: SqlConsoleProps) {
   const initialQuery = sqlStarterQueries[0];
   const [statement, setStatement] = useState(initialQuery.statement);
@@ -39,6 +41,8 @@ export function SqlConsole({ copilotAvailable }: SqlConsoleProps) {
   const [copilotState, setCopilotState] =
     useState<SqlConsoleActionState | null>(null);
   const [copilotPending, setCopilotPending] = useState(false);
+  const [copilotActivity, setCopilotActivity] =
+    useState<QueryActivity | null>(null);
   const generationAbortController = useRef<AbortController | null>(
     null,
   );
@@ -95,7 +99,8 @@ export function SqlConsole({ copilotAvailable }: SqlConsoleProps) {
     setSubmittedRequest(currentRequest);
     setCopilotProgress(["Starting Copilot..."]);
     setCopilotResponse("");
-    setCopilotState(null);
+    setCopilotState(initialSqlConsoleActionState);
+    setCopilotActivity("generating");
     setCopilotPending(true);
     const abortController = new AbortController();
     generationAbortController.current = abortController;
@@ -164,12 +169,17 @@ export function SqlConsole({ copilotAvailable }: SqlConsoleProps) {
               (current) => current + streamEvent.delta,
             );
           } else if (
+            streamEvent.type === "query-running"
+          ) {
+            setCopilotActivity("running");
+          } else if (
             streamEvent.type === "complete" &&
             typeof streamEvent.response === "string" &&
             streamEvent.state
           ) {
             setCopilotResponse(streamEvent.response);
             setCopilotState(streamEvent.state);
+            setCopilotActivity(null);
             completed = true;
 
             if (streamEvent.state.generatedQuery) {
@@ -213,6 +223,7 @@ export function SqlConsole({ copilotAvailable }: SqlConsoleProps) {
         generatedQuery: null,
         formattedStatement: null,
       });
+      setCopilotActivity(null);
     } finally {
       if (generationAbortController.current === abortController) {
         generationAbortController.current = null;
@@ -223,6 +234,9 @@ export function SqlConsole({ copilotAvailable }: SqlConsoleProps) {
 
   const displayedState = copilotState ?? state;
   const pending = copilotPending || sqlPending;
+  const queryActivity: QueryActivity | null = sqlPending
+    ? "running"
+    : copilotActivity;
 
   return (
     <div className="sql-console-layout">
@@ -382,7 +396,17 @@ export function SqlConsole({ copilotAvailable }: SqlConsoleProps) {
       <section className="panel sql-results-panel">
         <p className="panel-kicker">Query output</p>
         <h2>Results</h2>
-        {displayedState.message ? (
+        {queryActivity ? (
+          <p
+            className="action-message running"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            {queryActivity === "generating"
+              ? "Generating..."
+              : "Running query..."}
+          </p>
+        ) : displayedState.message ? (
           <p
             className={`action-message ${displayedState.status}`}
             aria-live="polite"
@@ -393,7 +417,7 @@ export function SqlConsole({ copilotAvailable }: SqlConsoleProps) {
           <p>Run a query to inspect its results.</p>
         )}
 
-        {displayedState.result ? (
+        {!queryActivity && displayedState.result ? (
           displayedState.result.columns.length === 0 ? (
             <p>The query returned no columns.</p>
           ) : (

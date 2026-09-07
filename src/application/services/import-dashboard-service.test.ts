@@ -47,9 +47,12 @@ describe("ImportDashboardService", () => {
           errorMessage: null,
         },
       ]),
+      listSeasonDatasetStatuses: vi.fn().mockResolvedValue([]),
     } satisfies Pick<
       DatabaseProvider,
-      "getSeasonImportSnapshot" | "listImportRuns"
+      | "getSeasonImportSnapshot"
+      | "listImportRuns"
+      | "listSeasonDatasetStatuses"
     >;
     const service = new ImportDashboardService(database);
 
@@ -61,6 +64,7 @@ describe("ImportDashboardService", () => {
           teamCount: 2,
           matchupCount: 0,
           scoreCount: 0,
+          datasetStatuses: [],
         },
       ],
       recentRuns: [expect.objectContaining({ seasonYear: 2024 })],
@@ -72,6 +76,7 @@ describe("ImportDashboardService", () => {
     const service = new ImportDashboardService({
       getSeasonImportSnapshot: vi.fn(),
       listImportRuns: vi.fn(),
+      listSeasonDatasetStatuses: vi.fn(),
     });
 
     await expect(service.getDashboard(2025, 2024)).rejects.toThrow(

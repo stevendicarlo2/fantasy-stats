@@ -7,7 +7,14 @@ import type { ImportOperation, ImportRun } from "@/domain/types";
 import { SafeOperationalError } from "../errors";
 
 export interface SeasonImportServiceOptions {
-  database: DatabaseProvider;
+  database: Pick<
+    DatabaseProvider,
+    | "hasSeasonImport"
+    | "listSourceMappings"
+    | "startImportRun"
+    | "commitSeasonImport"
+    | "failImportRun"
+  >;
   source: FantasySource;
   createId?: () => string;
   now?: () => Date;
@@ -77,6 +84,7 @@ export class SeasonImportService {
       id: importRunId,
       provider: this.options.source.provider,
       operation,
+      dataset: "core",
       seasonYear: year,
       startedAt: this.now().toISOString(),
     });

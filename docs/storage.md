@@ -26,9 +26,10 @@ lost between requests. With no explicit selection it uses local storage.
 npm run import-season --year=2017 --storage=dummy
 ```
 
-Dummy storage keeps canonical snapshots, source mappings, import audits, and
-matchup overrides in memory for the lifetime of the process. It supports the
-season import service but does not support arbitrary SQL.
+Dummy storage keeps canonical snapshots, supplemental datasets, source
+mappings, import audits, and matchup overrides in memory for the lifetime of
+the process. It does not support arbitrary SQL or the matchup-roster detail
+read used by the web UI.
 
 The command prints canonical franchise, matchup, and score counts so ingestion
 can be verified without a real database. Nothing is persisted after the
@@ -50,9 +51,10 @@ npm run import-season --year=2017 --storage=local \
   --database-file=/absolute/path/fantasy-stats.db
 ```
 
-Local mode persists migrations, canonical data, audits, overrides, and scoring
-views. It is suitable for development and local inspection but is not the
-cross-computer source of truth.
+Local mode persists migrations, canonical data, weekly rosters, players,
+drafts, transactions, NFL games, player-game statistics, audits, overrides,
+and scoring views. It is suitable for development and local inspection but is
+not the cross-computer source of truth.
 
 Season rows persist ESPN's configured playoff-team count. Global franchise
 name history and explicit season-specific team names are stored independently,
@@ -72,9 +74,12 @@ FANTASY_STATS_LOCAL_DATABASE_FILE=.data/fantasy-stats.db
 
 The database-file setting is optional and defaults to the path shown above.
 The dashboard applies migrations during server initialization, lists imported
-seasons and recent import runs, and provides import and refresh actions.
+seasons and recent import runs, shows the latest state of each dataset, and
+provides full refresh and targeted supplemental retry actions.
 Imported season links show cumulative regular-season ANP qualification
 standings and weekly effective-score, NP, head-to-head bonus, and ANP results.
+Each matchup links to weekly roster detail with actual and projected fantasy
+points. Multi-week matchups expose one roster view per scoring period.
 
 ## Turso storage
 

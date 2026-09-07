@@ -43,6 +43,45 @@ const databaseProviderContract = {
       errorMessage: null,
     };
   },
+  async commitRosterImport(input) {
+    return {
+      id: input.importRunId,
+      provider: "synthetic",
+      operation: "import" as const,
+      dataset: "rosters" as const,
+      seasonYear: input.snapshot.seasonYear,
+      status: "succeeded" as const,
+      startedAt: "2026-08-23T23:00:00Z",
+      completedAt: input.completedAt,
+      errorMessage: null,
+    };
+  },
+  async commitTransactionImport(input) {
+    return {
+      id: input.importRunId,
+      provider: "synthetic",
+      operation: "import" as const,
+      dataset: "transactions" as const,
+      seasonYear: input.snapshot.seasonYear,
+      status: "succeeded" as const,
+      startedAt: "2026-08-23T23:00:00Z",
+      completedAt: input.completedAt,
+      errorMessage: null,
+    };
+  },
+  async commitPlayerStatsImport(input) {
+    return {
+      id: input.importRunId,
+      provider: "synthetic",
+      operation: "import" as const,
+      dataset: "player_stats" as const,
+      seasonYear: input.snapshot.seasonYear,
+      status: "succeeded" as const,
+      startedAt: "2026-08-23T23:00:00Z",
+      completedAt: input.completedAt,
+      errorMessage: null,
+    };
+  },
   async failImportRun(input) {
     return {
       id: input.importRunId,
@@ -55,7 +94,23 @@ const databaseProviderContract = {
       errorMessage: input.errorMessage,
     };
   },
+  async markImportUnavailable(input) {
+    return {
+      id: input.importRunId,
+      provider: "synthetic",
+      operation: "import" as const,
+      dataset: "rosters" as const,
+      seasonYear: 2025,
+      status: "unavailable" as const,
+      startedAt: "2026-08-23T23:00:00Z",
+      completedAt: input.completedAt,
+      errorMessage: input.reason,
+    };
+  },
   async listImportRuns() {
+    return [];
+  },
+  async listSeasonDatasetStatuses() {
     return [];
   },
   async listImportedSeasonYears() {
@@ -65,6 +120,12 @@ const databaseProviderContract = {
     return false;
   },
   async getSeasonImportSnapshot() {
+    return null;
+  },
+  async listRelevantPlayers() {
+    return [];
+  },
+  async getMatchupRosterDetail() {
     return null;
   },
   async listWeeklyTeamResults() {
