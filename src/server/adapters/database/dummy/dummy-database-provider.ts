@@ -1,8 +1,12 @@
 import { SafeOperationalError } from "@/application/errors";
 import type {
   CommitSeasonImportInput,
+  CommitPlayerStatsImportInput,
+  CommitRosterImportInput,
+  CommitTransactionImportInput,
   DatabaseProvider,
   FailImportRunInput,
+  MarkImportUnavailableInput,
   ReadOnlyQuery,
   ReadOnlyQueryResult,
   StartImportRunInput,
@@ -13,14 +17,22 @@ import {
   franchiseDisplayNameSchema,
   matchupOverrideSchema,
   seasonImportSnapshotSchema,
+  playerStatsImportSnapshotSchema,
+  rosterImportSnapshotSchema,
+  transactionImportSnapshotSchema,
 } from "@/domain/schemas";
 import type {
   CanonicalId,
   FranchiseDisplayName,
   ImportRun,
   MatchupOverride,
+  PlayerStatsImportSnapshot,
+  RelevantPlayer,
+  RosterImportSnapshot,
+  SeasonDatasetStatus,
   SeasonImportSnapshot,
   SourceMapping,
+  TransactionImportSnapshot,
 } from "@/domain/types";
 
 export class UnsupportedDummyStorageOperationError extends SafeOperationalError {
@@ -37,6 +49,15 @@ function copy<T>(value: T): T {
 export class DummyDatabaseProvider implements DatabaseProvider {
   private readonly snapshots = new Map<number, SeasonImportSnapshot>();
   private readonly importRuns = new Map<CanonicalId, ImportRun>();
+  private readonly rosterSnapshots = new Map<number, RosterImportSnapshot>();
+  private readonly transactionSnapshots = new Map<
+    number,
+    TransactionImportSnapshot
+  >();
+  private readonly playerStatsSnapshots = new Map<
+    number,
+    PlayerStatsImportSnapshot
+  >();
   private readonly overrides = new Map<CanonicalId, MatchupOverride>();
   private readonly displayNames = new Map<
     CanonicalId,
@@ -60,6 +81,21 @@ export class DummyDatabaseProvider implements DatabaseProvider {
           `${mapping.entityType}\u0000${mapping.externalId}`,
           mapping,
         );
+      }
+    }
+
+    for (const supplementalSnapshot of [
+      ...this.rosterSnapshots.values(),
+      ...this.transactionSnapshots.values(),
+      ...this.playerStatsSnapshots.values(),
+    ]) {
+      for (const mapping of supplementalSnapshot.sourceMappings) {
+        if (mapping.provider === provider) {
+          mappings.set(
+            `${mapping.entityType}\u0000${mapping.externalId}`,
+            mapping,
+          );
+        }
       }
     }
 
@@ -103,6 +139,7 @@ export class DummyDatabaseProvider implements DatabaseProvider {
 
     const importRun = importRunSchema.parse({
       ...input,
+      dataset: input.dataset ?? "core",
       status: "running",
       completedAt: null,
       errorMessage: null,
@@ -128,6 +165,42 @@ export class DummyDatabaseProvider implements DatabaseProvider {
     return copy(succeededImport);
   }
 
+  async commitRosterImport(
+    input: CommitRosterImportInput,
+  ): Promise<ImportRun> {
+    const snapshot = rosterImportSnapshotSchema.parse(input.snapshot);
+    const succeededImport = this.completeImport(
+      input.importRunId,
+      input.completedAt,
+    );
+    this.rosterSnapshots.set(snapshot.seasonYear, copy(snapshot));
+    return copy(succeededImport);
+  }
+
+  async commitTransactionImport(
+    input: CommitTransactionImportInput,
+  ): Promise<ImportRun> {
+    const snapshot = transactionImportSnapshotSchema.parse(input.snapshot);
+    const succeededImport = this.completeImport(
+      input.importRunId,
+      input.completedAt,
+    );
+    this.transactionSnapshots.set(snapshot.seasonYear, copy(snapshot));
+    return copy(succeededImport);
+  }
+
+  async commitPlayerStatsImport(
+    input: CommitPlayerStatsImportInput,
+  ): Promise<ImportRun> {
+    const snapshot = playerStatsImportSnapshotSchema.parse(input.snapshot);
+    const succeededImport = this.completeImport(
+      input.importRunId,
+      input.completedAt,
+    );
+    this.playerStatsSnapshots.set(snapshot.seasonYear, copy(snapshot));
+    return copy(succeededImport);
+  }
+
   async failImportRun(input: FailImportRunInput): Promise<ImportRun> {
     const runningImport = this.requireRunningImport(input.importRunId);
     const failedImport = importRunSchema.parse({
@@ -141,12 +214,66 @@ export class DummyDatabaseProvider implements DatabaseProvider {
     return copy(failedImport);
   }
 
+  async markImportUnavailable(
+    input: MarkImportUnavailableInput,
+  ): Promise<ImportRun> {
+    const runningImport = this.requireRunningImport(input.importRunId);
+    const unavailableImport = importRunSchema.parse({
+      ...runningImport,
+      status: "unavailable",
+      completedAt: input.completedAt,
+      errorMessage: input.reason,
+    });
+
+    this.importRuns.set(unavailableImport.id, unavailableImport);
+    return copy(unavailableImport);
+  }
+
   async listImportRuns(limit = 20): Promise<ImportRun[]> {
     return copy(
       [...this.importRuns.values()]
         .sort((left, right) => right.startedAt.localeCompare(left.startedAt))
         .slice(0, limit),
     );
+  }
+
+  async listSeasonDatasetStatuses(
+    seasonYear: number,
+  ): Promise<SeasonDatasetStatus[]> {
+    const latestByDataset = new Map<
+      NonNullable<ImportRun["dataset"]>,
+      ImportRun
+    >();
+
+    for (const run of [...this.importRuns.values()].sort((left, right) =>
+      right.startedAt.localeCompare(left.startedAt),
+    )) {
+      const dataset = run.dataset ?? "core";
+
+      if (run.seasonYear === seasonYear && !latestByDataset.has(dataset)) {
+        latestByDataset.set(dataset, run);
+      }
+    }
+
+    return (
+      ["core", "rosters", "transactions", "player_stats"] as const
+    ).map((dataset) => {
+      const run = latestByDataset.get(dataset);
+
+      return run
+        ? {
+            dataset,
+            status: run.status,
+            completedAt: run.completedAt,
+            message: run.errorMessage,
+          }
+        : {
+            dataset,
+            status: "not_imported" as const,
+            completedAt: null,
+            message: null,
+          };
+    });
   }
 
   async listImportedSeasonYears(): Promise<number[]> {
@@ -162,6 +289,55 @@ export class DummyDatabaseProvider implements DatabaseProvider {
   ): Promise<SeasonImportSnapshot | null> {
     const snapshot = this.snapshots.get(seasonYear);
     return snapshot ? copy(snapshot) : null;
+  }
+
+  async listRelevantPlayers(
+    seasonYear: number,
+  ): Promise<RelevantPlayer[]> {
+    const canonicalIds = new Set<string>();
+    const roster = this.rosterSnapshots.get(seasonYear);
+    const transactions = this.transactionSnapshots.get(seasonYear);
+
+    roster?.entries.forEach((entry) => canonicalIds.add(entry.playerId));
+    transactions?.draftPicks.forEach((pick) =>
+      canonicalIds.add(pick.playerId),
+    );
+    transactions?.transactionItems.forEach((item) =>
+      canonicalIds.add(item.playerId),
+    );
+
+    const players = new Map(
+      [
+        ...(roster?.players ?? []),
+        ...(transactions?.players ?? []),
+      ].map((player) => [player.id, player]),
+    );
+    const mappings = [
+      ...(roster?.sourceMappings ?? []),
+      ...(transactions?.sourceMappings ?? []),
+    ];
+
+    return copy(
+      mappings.flatMap((mapping) =>
+        mapping.provider === "espn" &&
+        mapping.entityType === "player" &&
+        canonicalIds.has(mapping.canonicalId) &&
+        players.get(mapping.canonicalId)?.kind === "athlete"
+          ? [{ id: mapping.canonicalId, externalId: mapping.externalId }]
+          : [],
+      ),
+    );
+  }
+
+  async getMatchupRosterDetail(
+    seasonYear: number,
+    matchupId: CanonicalId,
+  ): Promise<never> {
+    void seasonYear;
+    void matchupId;
+    throw new UnsupportedDummyStorageOperationError(
+      "matchup roster details",
+    );
   }
 
   async listWeeklyTeamResults(
@@ -240,5 +416,20 @@ export class DummyDatabaseProvider implements DatabaseProvider {
     }
 
     return importRun;
+  }
+
+  private completeImport(
+    importRunId: CanonicalId,
+    completedAt: string,
+  ) {
+    const runningImport = this.requireRunningImport(importRunId);
+    const succeededImport = importRunSchema.parse({
+      ...runningImport,
+      status: "succeeded",
+      completedAt,
+      errorMessage: null,
+    });
+    this.importRuns.set(succeededImport.id, succeededImport);
+    return succeededImport;
   }
 }

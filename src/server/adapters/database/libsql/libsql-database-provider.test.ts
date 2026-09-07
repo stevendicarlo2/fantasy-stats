@@ -23,6 +23,16 @@ const ids = {
   failedRun: "99999999-9999-4999-8999-999999999999",
   otherLeague: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   otherSeason: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  player: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+  defense: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+  nflTeam: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+  awayNflTeam: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+  rosterRun: "f1111111-1111-4111-8111-111111111111",
+  transactionRun: "f2222222-2222-4222-8222-222222222222",
+  draftPick: "f3333333-3333-4333-8333-333333333333",
+  transaction: "f4444444-4444-4444-8444-444444444444",
+  game: "f5555555-5555-4555-8555-555555555555",
+  playerStatsRun: "f6666666-6666-4666-8666-666666666666",
 };
 
 function createSnapshot(): SeasonImportSnapshot {
@@ -151,6 +161,7 @@ describe("libSQL database provider", () => {
         "0005_franchise_display_names.sql",
         "0006_season_franchise_names.sql",
         "0007_season_playoff_team_count.sql",
+        "0008_matchup_roster_data.sql",
       ],
     });
     await expect(provider.runMigrations()).resolves.toEqual({
@@ -164,7 +175,6 @@ describe("libSQL database provider", () => {
       id: ids.importRun,
       status: "succeeded",
     });
-
     const storedSnapshot = await provider.getSeasonImportSnapshot(2025);
     const expectedSnapshot = createSnapshot();
     expect(storedSnapshot).toMatchObject({
@@ -186,6 +196,386 @@ describe("libSQL database provider", () => {
     ]);
     expect(storedSnapshot?.sourceMappings).toHaveLength(5);
     await expect(provider.listSourceMappings("espn")).resolves.toHaveLength(5);
+  });
+
+  it("persists independent roster, transaction, and player-stat datasets", async () => {
+      await provider.runMigrations();
+      await importSnapshot();
+      await provider.startImportRun({
+        id: ids.rosterRun,
+        provider: "espn",
+        operation: "import",
+        dataset: "rosters",
+        seasonYear: 2025,
+        startedAt: "2026-08-23T23:02:00Z",
+      });
+      await provider.commitRosterImport({
+        importRunId: ids.rosterRun,
+        completedAt: "2026-08-23T23:03:00Z",
+        snapshot: {
+          seasonId: ids.season,
+          seasonYear: 2025,
+          players: [
+            {
+              id: ids.player,
+              kind: "athlete",
+              displayName: "Synthetic Player",
+              firstName: "Synthetic",
+              lastName: "Player",
+            },
+            {
+              id: ids.defense,
+              kind: "team_defense",
+              displayName: "Synthetic D/ST",
+              firstName: null,
+              lastName: null,
+            },
+          ],
+          nflTeams: [
+            {
+              id: ids.nflTeam,
+              abbreviation: "SYN",
+              displayName: "Synthetic Team",
+            },
+            {
+              id: ids.awayNflTeam,
+              abbreviation: "AWY",
+              displayName: "Away NFL Team",
+            },
+          ],
+          rosters: [
+            {
+              seasonId: ids.season,
+              scoringPeriod: 1,
+              franchiseId: ids.home,
+              state: "final",
+            },
+            {
+              seasonId: ids.season,
+              scoringPeriod: 1,
+              franchiseId: ids.away,
+              state: "final",
+            },
+          ],
+          entries: [
+            {
+              seasonId: ids.season,
+              scoringPeriod: 1,
+              franchiseId: ids.home,
+              playerId: ids.player,
+              lineupSlot: "QB",
+              rosterOrder: 0,
+              actualFantasyPoints: 20.5,
+              projectedFantasyPoints: 18.25,
+            },
+            {
+              seasonId: ids.season,
+              scoringPeriod: 1,
+              franchiseId: ids.away,
+              playerId: ids.defense,
+              lineupSlot: "DST",
+              rosterOrder: 0,
+              actualFantasyPoints: 8,
+              projectedFantasyPoints: null,
+            },
+          ],
+          nflTeamRanges: [
+            {
+              playerId: ids.player,
+              seasonId: ids.season,
+              nflTeamId: ids.nflTeam,
+              startScoringPeriod: 1,
+              endScoringPeriod: 1,
+            },
+          ],
+          positionRanges: [
+            {
+              playerId: ids.player,
+              seasonId: ids.season,
+              position: "QB",
+              startScoringPeriod: 1,
+              endScoringPeriod: 1,
+            },
+            {
+              playerId: ids.defense,
+              seasonId: ids.season,
+              position: "DST",
+              startScoringPeriod: 1,
+              endScoringPeriod: 1,
+            },
+          ],
+          sourceMappings: [
+            {
+              provider: "espn",
+              entityType: "player",
+              canonicalId: ids.player,
+              externalId: "101",
+            },
+            {
+              provider: "espn",
+              entityType: "player",
+              canonicalId: ids.defense,
+              externalId: "team-defense:1",
+            },
+            {
+              provider: "espn",
+              entityType: "nfl_team",
+              canonicalId: ids.nflTeam,
+              externalId: "1",
+            },
+          ],
+        },
+      });
+      await provider.startImportRun({
+        id: ids.transactionRun,
+        provider: "espn",
+        operation: "import",
+        dataset: "transactions",
+        seasonYear: 2025,
+        startedAt: "2026-08-23T23:04:00Z",
+      });
+      await provider.commitTransactionImport({
+        importRunId: ids.transactionRun,
+        completedAt: "2026-08-23T23:05:00Z",
+        snapshot: {
+          seasonId: ids.season,
+          seasonYear: 2025,
+          players: [
+            {
+              id: ids.player,
+              kind: "athlete",
+              displayName: "Synthetic Player",
+              firstName: "Synthetic",
+              lastName: "Player",
+            },
+          ],
+          nflTeams: [],
+          draftPicks: [
+            {
+              id: ids.draftPick,
+              seasonId: ids.season,
+              franchiseId: ids.home,
+              playerId: ids.player,
+              round: 1,
+              roundPick: 1,
+              overallPick: 1,
+              keeper: false,
+              auctionBid: null,
+            },
+          ],
+          transactions: [
+            {
+              id: ids.transaction,
+              seasonId: ids.season,
+              scoringPeriod: 1,
+              kind: "waiver",
+              outcome: "failed",
+              actingFranchiseId: ids.home,
+              proposedAt: "2025-09-01T00:00:00Z",
+              processedAt: "2025-09-02T00:00:00Z",
+              acceptedAt: null,
+              bidAmount: 5,
+              failureReason: "roster_limit",
+            },
+          ],
+          transactionItems: [
+            {
+              transactionId: ids.transaction,
+              ordinal: 0,
+              playerId: ids.player,
+              action: "add",
+              fromFranchiseId: null,
+              toFranchiseId: ids.home,
+            },
+          ],
+          sourceMappings: [
+            {
+              provider: "espn",
+              entityType: "draft_pick",
+              canonicalId: ids.draftPick,
+              externalId: "pick-1",
+            },
+            {
+              provider: "espn",
+              entityType: "transaction",
+              canonicalId: ids.transaction,
+              externalId: "transaction-1",
+            },
+          ],
+        },
+      });
+      await provider.startImportRun({
+        id: ids.playerStatsRun,
+        provider: "espn",
+        operation: "import",
+        dataset: "player_stats",
+        seasonYear: 2025,
+        startedAt: "2026-08-23T23:06:00Z",
+      });
+      await provider.commitPlayerStatsImport({
+        importRunId: ids.playerStatsRun,
+        completedAt: "2026-08-23T23:07:00Z",
+        snapshot: {
+          seasonYear: 2025,
+          nflTeams: [
+            {
+              id: ids.nflTeam,
+              abbreviation: "SYN",
+              displayName: "Synthetic Team",
+            },
+            {
+              id: ids.awayNflTeam,
+              abbreviation: "AWY",
+              displayName: "Away NFL Team",
+            },
+          ],
+          games: [
+            {
+              id: ids.game,
+              seasonYear: 2025,
+              seasonType: 2,
+              week: 1,
+              startsAt: "2025-09-07T17:00:00Z",
+              homeNflTeamId: ids.nflTeam,
+              awayNflTeamId: ids.awayNflTeam,
+              completed: true,
+            },
+          ],
+          playerStats: [
+            {
+              playerId: ids.player,
+              nflGameId: ids.game,
+              nflTeamId: ids.nflTeam,
+              passingAttempts: 30,
+              passingCompletions: 20,
+              passingYards: 250,
+              passingTouchdowns: 2,
+              passingInterceptions: 1,
+              rushingAttempts: 3,
+              rushingYards: 12,
+              rushingTouchdowns: 0,
+              receptions: 0,
+              receivingTargets: 0,
+              receivingYards: 0,
+              receivingTouchdowns: 0,
+              fumbles: 1,
+              fumblesLost: 0,
+              passingTwoPointConversions: 1,
+              rushingTwoPointConversions: 0,
+              receivingTwoPointConversions: 0,
+              extraPointsMade: 0,
+              extraPointsMissed: 0,
+              madeFieldGoalDistances: [42],
+              missedFieldGoalDistances: [51],
+            },
+          ],
+          sourceMappings: [
+            {
+              provider: "espn",
+              entityType: "nfl_game",
+              canonicalId: ids.game,
+              externalId: "game-1",
+            },
+          ],
+        },
+      });
+
+      await expect(provider.listRelevantPlayers(2025)).resolves.toEqual([
+        { id: ids.player, externalId: "101" },
+      ]);
+      await expect(
+        provider.getMatchupRosterDetail(2025, ids.matchup),
+      ).resolves.toMatchObject({
+        matchupId: ids.matchup,
+        periods: [
+          {
+            scoringPeriod: 1,
+            teams: [
+              {
+                franchiseId: ids.home,
+                players: [
+                  expect.objectContaining({
+                    playerId: ids.player,
+                    projectedFantasyPoints: 18.25,
+                  }),
+                ],
+              },
+              {
+                franchiseId: ids.away,
+                players: [
+                  expect.objectContaining({
+                    playerId: ids.defense,
+                    projectedFantasyPoints: null,
+                  }),
+                ],
+              },
+            ],
+          },
+        ],
+      });
+      await expect(
+        provider.listSeasonDatasetStatuses(2025),
+      ).resolves.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            dataset: "rosters",
+            status: "succeeded",
+          }),
+          expect.objectContaining({
+            dataset: "transactions",
+            status: "succeeded",
+          }),
+          expect.objectContaining({
+            dataset: "player_stats",
+            status: "succeeded",
+          }),
+        ]),
+      );
+      await expect(
+        provider.executeReadOnlyQuery({
+          statement: `
+            SELECT
+              passing_yards,
+              made_field_goal_distances,
+              missed_field_goal_distances
+            FROM player_game_stats
+            WHERE player_id = ?
+          `,
+          parameters: [ids.player],
+        }),
+      ).resolves.toEqual({
+        columns: [
+          "passing_yards",
+          "made_field_goal_distances",
+          "missed_field_goal_distances",
+        ],
+        rows: [
+          {
+            passing_yards: 250,
+            made_field_goal_distances: "[42]",
+            missed_field_goal_distances: "[51]",
+          },
+        ],
+      });
+      await expect(
+        provider.executeReadOnlyQuery({
+          statement: `
+            SELECT outcome, failure_reason, bid_amount
+            FROM fantasy_transactions
+            WHERE id = ?
+          `,
+          parameters: [ids.transaction],
+        }),
+      ).resolves.toEqual({
+        columns: ["outcome", "failure_reason", "bid_amount"],
+        rows: [
+          {
+            outcome: "failed",
+            failure_reason: "roster_limit",
+            bid_amount: 5,
+          },
+        ],
+      });
   });
 
   it("loads legacy seasons before authoritative configuration refresh", async () => {

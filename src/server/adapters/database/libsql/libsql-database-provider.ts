@@ -13,8 +13,12 @@ import { z } from "zod";
 import { SafeOperationalError } from "@/application/errors";
 import type {
   CommitSeasonImportInput,
+  CommitPlayerStatsImportInput,
+  CommitRosterImportInput,
+  CommitTransactionImportInput,
   DatabaseProvider,
   FailImportRunInput,
+  MarkImportUnavailableInput,
   MigrationResult,
   ReadOnlyQuery,
   ReadOnlyQueryResult,
@@ -31,6 +35,7 @@ import {
   importedMatchupScoreSchema,
   importRunSchema,
   leagueSchema,
+  matchupScoringPeriodSchema,
   matchupOverrideSchema,
   matchupSchema,
   seasonImportSnapshotSchema,
@@ -47,6 +52,14 @@ import type {
 } from "@/domain/types";
 
 import { createMigrationRunner } from "./migration-runner";
+import {
+  getMatchupRosterDetail,
+  listRelevantPlayers,
+  listSeasonDatasetStatuses,
+  replacePlayerStatsData,
+  replaceRosterData,
+  replaceTransactionData,
+} from "./supplemental-data";
 
 type SqlExecutor = Pick<Client, "execute"> | Pick<Transaction, "execute">;
 
@@ -96,6 +109,7 @@ async function selectImportRun(
         id,
         provider,
         operation,
+        dataset,
         season_year AS seasonYear,
         status,
         started_at AS startedAt,
@@ -355,6 +369,29 @@ async function upsertSeasonSnapshot(
         args: [matchup.id],
       },
     ]),
+    {
+      sql: `
+        DELETE FROM matchup_scoring_periods
+        WHERE matchup_id IN (
+          SELECT id FROM matchups WHERE season_id = ?
+        )
+      `,
+      args: [snapshot.season.id],
+    },
+    ...(snapshot.matchupScoringPeriods ??
+      snapshot.matchups.map((matchup) => ({
+        matchupId: matchup.id,
+        scoringPeriod: matchup.week,
+      }))).map((period) => ({
+      sql: `
+        INSERT INTO matchup_scoring_periods (
+          matchup_id,
+          scoring_period
+        )
+        VALUES (?, ?)
+      `,
+      args: [period.matchupId, period.scoringPeriod],
+    })),
     ...snapshot.scores.map((score) => ({
       sql: `
         INSERT INTO imported_matchup_scores (
@@ -487,6 +524,20 @@ async function loadSeasonSnapshot(
     `,
     args: [season.id],
   });
+  const matchupScoringPeriodResult = await client.execute({
+    sql: `
+      SELECT
+        matchup_scoring_periods.matchup_id AS matchupId,
+        matchup_scoring_periods.scoring_period AS scoringPeriod
+      FROM matchup_scoring_periods
+      INNER JOIN matchups
+        ON matchups.id = matchup_scoring_periods.matchup_id
+      WHERE matchups.season_id = ?
+      ORDER BY matchup_scoring_periods.matchup_id,
+        matchup_scoring_periods.scoring_period
+    `,
+    args: [season.id],
+  });
 
   const canonicalIds = [
     season.leagueId,
@@ -523,6 +574,9 @@ async function loadSeasonSnapshot(
       franchiseNameSchema.parse(row),
     ),
     matchups: matchupResult.rows.map((row) => matchupSchema.parse(row)),
+    matchupScoringPeriods: matchupScoringPeriodResult.rows.map((row) =>
+      matchupScoringPeriodSchema.parse(row),
+    ),
     scores: scoreResult.rows.map((row) =>
       importedMatchupScoreSchema.parse(row),
     ),
@@ -785,6 +839,7 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
   async startImportRun(input: StartImportRunInput): Promise<ImportRun> {
     const importRun = importRunSchema.parse({
       ...input,
+      dataset: input.dataset ?? "core",
       status: "running",
       completedAt: null,
       errorMessage: null,
@@ -796,18 +851,20 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
           id,
           provider,
           operation,
+          dataset,
           season_year,
           status,
           started_at,
           completed_at,
           error_message
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       args: [
         importRun.id,
         importRun.provider,
         importRun.operation,
+        importRun.dataset ?? "core",
         importRun.seasonYear,
         importRun.status,
         importRun.startedAt,
@@ -857,6 +914,36 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
     });
   }
 
+  async commitRosterImport(
+    input: CommitRosterImportInput,
+  ): Promise<ImportRun> {
+    return this.commitSupplementalImport(
+      input.importRunId,
+      input.completedAt,
+      (transaction) => replaceRosterData(transaction, input),
+    );
+  }
+
+  async commitTransactionImport(
+    input: CommitTransactionImportInput,
+  ): Promise<ImportRun> {
+    return this.commitSupplementalImport(
+      input.importRunId,
+      input.completedAt,
+      (transaction) => replaceTransactionData(transaction, input),
+    );
+  }
+
+  async commitPlayerStatsImport(
+    input: CommitPlayerStatsImportInput,
+  ): Promise<ImportRun> {
+    return this.commitSupplementalImport(
+      input.importRunId,
+      input.completedAt,
+      (transaction) => replacePlayerStatsData(transaction, input),
+    );
+  }
+
   async failImportRun(input: FailImportRunInput): Promise<ImportRun> {
     if (input.errorMessage.trim().length === 0) {
       throw new LibSqlDatabaseError(
@@ -898,6 +985,49 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
     });
   }
 
+  async markImportUnavailable(
+    input: MarkImportUnavailableInput,
+  ): Promise<ImportRun> {
+    if (input.reason.trim().length === 0) {
+      throw new LibSqlDatabaseError(
+        "Unavailable import runs require a reason",
+      );
+    }
+
+    return runWriteTransaction(this.client, async (transaction) => {
+      const runningImport = await selectImportRun(
+        transaction,
+        input.importRunId,
+      );
+      const unavailableImport = importRunSchema.parse({
+        ...runningImport,
+        status: "unavailable",
+        completedAt: input.completedAt,
+        errorMessage: input.reason,
+      });
+      const result = await transaction.execute({
+        sql: `
+          UPDATE import_runs
+          SET status = 'unavailable', completed_at = ?, error_message = ?
+          WHERE id = ? AND status = 'running'
+        `,
+        args: [
+          unavailableImport.completedAt,
+          unavailableImport.errorMessage,
+          unavailableImport.id,
+        ],
+      });
+
+      if (result.rowsAffected !== 1) {
+        throw new LibSqlDatabaseError(
+          `Running import ${input.importRunId} was not found`,
+        );
+      }
+
+      return selectImportRun(transaction, input.importRunId);
+    });
+  }
+
   async listImportRuns(limit = 20): Promise<ImportRun[]> {
     if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
       throw new LibSqlDatabaseError(
@@ -911,6 +1041,7 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
           id,
           provider,
           operation,
+          dataset,
           season_year AS seasonYear,
           status,
           started_at AS startedAt,
@@ -947,6 +1078,21 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
     seasonYear: number,
   ): Promise<SeasonImportSnapshot | null> {
     return loadSeasonSnapshot(this.client, seasonYear);
+  }
+
+  listRelevantPlayers(seasonYear: number) {
+    return listRelevantPlayers(this.client, seasonYear);
+  }
+
+  getMatchupRosterDetail(
+    seasonYear: number,
+    matchupId: CanonicalId,
+  ) {
+    return getMatchupRosterDetail(this.client, seasonYear, matchupId);
+  }
+
+  listSeasonDatasetStatuses(seasonYear: number) {
+    return listSeasonDatasetStatuses(this.client, seasonYear);
   }
 
   async listWeeklyTeamResults(seasonYear: number) {
@@ -1139,6 +1285,40 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
 
   close() {
     this.client.close();
+  }
+
+  private commitSupplementalImport(
+    importRunId: CanonicalId,
+    completedAt: string,
+    replaceData: (transaction: Transaction) => Promise<void>,
+  ) {
+    return runWriteTransaction(this.client, async (transaction) => {
+      const importRun = await selectImportRun(transaction, importRunId);
+
+      if (importRun.status !== "running") {
+        throw new LibSqlDatabaseError(
+          `Import run ${importRunId} is not running`,
+        );
+      }
+
+      await replaceData(transaction);
+      const updateResult = await transaction.execute({
+        sql: `
+          UPDATE import_runs
+          SET status = 'succeeded', completed_at = ?, error_message = NULL
+          WHERE id = ? AND status = 'running'
+        `,
+        args: [completedAt, importRunId],
+      });
+
+      if (updateResult.rowsAffected !== 1) {
+        throw new LibSqlDatabaseError(
+          `Import run ${importRunId} could not be completed`,
+        );
+      }
+
+      return selectImportRun(transaction, importRunId);
+    });
   }
 }
 
