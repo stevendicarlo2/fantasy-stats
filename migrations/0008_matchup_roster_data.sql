@@ -252,7 +252,7 @@ CREATE TABLE fantasy_transaction_items (
 CREATE TABLE nfl_games (
   id TEXT PRIMARY KEY,
   season_year INTEGER NOT NULL REFERENCES seasons(year) ON DELETE CASCADE,
-  season_type INTEGER NOT NULL CHECK (season_type > 0),
+  game_type INTEGER NOT NULL CHECK (game_type > 0),
   week INTEGER NOT NULL CHECK (week > 0),
   starts_at TEXT NOT NULL,
   home_nfl_team_id TEXT NOT NULL REFERENCES nfl_teams(id),
