@@ -18,12 +18,13 @@ describe("SqlQueryAssistantService", () => {
     expect(generator.checkAvailability).toHaveBeenCalledOnce();
   });
 
-  it("trims the request and normalizes the generated query", async () => {
+  it("trims the request and formats the generated query", async () => {
     const generator = {
       checkAvailability: vi.fn(),
       generate: vi.fn().mockResolvedValue({
         response: "I generated a season query.",
-        statement: "  SELECT year FROM seasons  ",
+        statement:
+          "  SELECT year, COUNT(*) AS total FROM seasons WHERE year > ? GROUP BY year ORDER BY year DESC  ",
         parameters: [],
       }),
     };
@@ -33,7 +34,19 @@ describe("SqlQueryAssistantService", () => {
       service.generate("  Show imported seasons  "),
     ).resolves.toEqual({
       response: "I generated a season query.",
-      statement: "SELECT year FROM seasons",
+      statement: [
+        "SELECT",
+        "  year,",
+        "  COUNT(*) AS total",
+        "FROM",
+        "  seasons",
+        "WHERE",
+        "  year > ?",
+        "GROUP BY",
+        "  year",
+        "ORDER BY",
+        "  year DESC",
+      ].join("\n"),
       parameters: [],
     });
     expect(generator.generate).toHaveBeenCalledWith(
