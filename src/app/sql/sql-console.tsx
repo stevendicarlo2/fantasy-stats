@@ -48,6 +48,7 @@ export function SqlConsole({ copilotAvailable }: SqlConsoleProps) {
       formData: FormData,
     ) => {
       setCopilotState(null);
+      const submittedStatement = formData.get("statement");
       const nextState = await runSqlConsoleAction(
         previousState,
         formData,
@@ -56,6 +57,14 @@ export function SqlConsole({ copilotAvailable }: SqlConsoleProps) {
       if (nextState.generatedQuery) {
         setStatement(nextState.generatedQuery.statement);
         setParameters(nextState.generatedQuery.parameters);
+      } else if (nextState.formattedStatement) {
+        const formattedStatement = nextState.formattedStatement;
+        setStatement((currentStatement) =>
+          typeof submittedStatement === "string" &&
+          currentStatement === submittedStatement
+            ? formattedStatement
+            : currentStatement,
+        );
       }
 
       return nextState;
@@ -202,6 +211,7 @@ export function SqlConsole({ copilotAvailable }: SqlConsoleProps) {
             : "Copilot query generation failed unexpectedly",
         result: null,
         generatedQuery: null,
+        formattedStatement: null,
       });
     } finally {
       if (generationAbortController.current === abortController) {

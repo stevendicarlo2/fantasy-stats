@@ -36,10 +36,10 @@ remain visible, and the generated SQL and parameters are loaded into their
 existing editors. **Generate & run** continues to execute the validated query
 and display its result table.
 
-Generated statements are formatted with the SQLite dialect before they are
-loaded into the editor or executed. Keywords are uppercased and clauses,
-selected columns, joins, and conditions are split across indented lines for
-readability.
+Generated statements and manually submitted queries are formatted with the
+SQLite dialect before they are loaded into the editor or executed. Keywords
+are uppercased and clauses, selected columns, joins, and conditions are split
+across indented lines for readability.
 
 The CLI uses JSONL streaming events internally. Its final model response is a
 strict JSON object containing a user-facing explanation, SQL statement, and

@@ -1,5 +1,4 @@
 import { SafeOperationalError } from "@/application/errors";
-import { format as formatSql } from "sql-formatter";
 import type {
   GeneratedSqlQuery,
   SqlQueryGenerationUpdate,
@@ -9,20 +8,6 @@ import type {
 import { normalizeSqlConsoleQuery } from "./sql-console-service";
 
 export const SQL_QUERY_REQUEST_MAX_LENGTH = 2_000;
-
-function formatGeneratedSql(statement: string) {
-  try {
-    return formatSql(statement, {
-      language: "sqlite",
-      keywordCase: "upper",
-      tabWidth: 2,
-    });
-  } catch {
-    throw new SafeOperationalError(
-      "Copilot generated SQL that could not be formatted",
-    );
-  }
-}
 
 export class SqlQueryAssistantService {
   private availability: Promise<boolean> | null = null;
@@ -62,14 +47,10 @@ export class SqlQueryAssistantService {
       generatedQuery.statement,
       generatedQuery.parameters,
     );
-    const formattedQuery = normalizeSqlConsoleQuery(
-      formatGeneratedSql(normalizedQuery.statement),
-      normalizedQuery.parameters,
-    );
 
     return {
       response: generatedQuery.response,
-      ...formattedQuery,
+      ...normalizedQuery,
     };
   }
 }

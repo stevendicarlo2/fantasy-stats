@@ -1,10 +1,13 @@
 import { SafeOperationalError } from "@/application/errors";
 import type { SqlParameter } from "@/application/ports/database-provider";
-import type {
-  SqlConsoleResult,
-  SqlConsoleService,
+import {
+  normalizeSqlConsoleQuery,
+  type SqlConsoleResult,
+  type SqlConsoleService,
 } from "@/application/services/sql-console-service";
-import type { SqlQueryAssistantService } from "@/application/services/sql-query-assistant-service";
+import type {
+  SqlQueryAssistantService,
+} from "@/application/services/sql-query-assistant-service";
 
 export interface SqlConsoleActionState {
   status: "idle" | "success" | "error";
@@ -14,6 +17,7 @@ export interface SqlConsoleActionState {
     statement: string;
     parameters: string;
   } | null;
+  formattedStatement: string | null;
 }
 
 export const initialSqlConsoleActionState: SqlConsoleActionState = {
@@ -21,6 +25,7 @@ export const initialSqlConsoleActionState: SqlConsoleActionState = {
   message: "",
   result: null,
   generatedQuery: null,
+  formattedStatement: null,
 };
 
 type ConsoleService = Pick<SqlConsoleService, "execute">;
@@ -79,19 +84,29 @@ export async function executeSqlConsoleAction(
   formData: FormData,
   getService: () => ConsoleService | Promise<ConsoleService>,
 ): Promise<SqlConsoleActionState> {
+  let formattedStatement: string | null = null;
+
   try {
-    const statement = requireString(formData, "statement");
     const parameters = parseParameters(
       requireString(formData, "parameters"),
     );
+    const query = normalizeSqlConsoleQuery(
+      requireString(formData, "statement"),
+      parameters,
+    );
+    formattedStatement = query.statement;
     const service = await getService();
-    const result = await service.execute(statement, parameters);
+    const result = await service.execute(
+      query.statement,
+      query.parameters,
+    );
 
     return {
       status: "success",
       message: formatResultMessage(result),
       result,
       generatedQuery: null,
+      formattedStatement,
     };
   } catch (error) {
     return {
@@ -102,6 +117,7 @@ export async function executeSqlConsoleAction(
           : "The SQL query failed unexpectedly",
       result: null,
       generatedQuery: null,
+      formattedStatement,
     };
   }
 }
@@ -136,6 +152,7 @@ export async function executeSqlQueryAssistantAction(
         message: "Query generated. Review or run it below.",
         result: null,
         generatedQuery,
+        formattedStatement: null,
       };
     }
 
@@ -149,6 +166,7 @@ export async function executeSqlQueryAssistantAction(
       message: `Query generated. ${formatResultMessage(result)}`,
       result,
       generatedQuery,
+      formattedStatement: null,
     };
   } catch (error) {
     return {
@@ -159,6 +177,7 @@ export async function executeSqlQueryAssistantAction(
           : "Copilot query generation failed unexpectedly",
       result: null,
       generatedQuery,
+      formattedStatement: null,
     };
   }
 }

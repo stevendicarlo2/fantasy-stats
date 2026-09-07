@@ -9,6 +9,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { runSqlConsoleAction } from "../actions";
 import { SqlConsole } from "./sql-console";
 
 vi.mock("../actions", () => ({
@@ -110,6 +111,7 @@ describe("SqlConsole Copilot generation", () => {
               status: "success",
               message: "Query generated. Review or run it below.",
               result: null,
+              formattedStatement: null,
               generatedQuery: {
                 statement: "SELECT MAX(year) FROM seasons",
                 parameters: "[]",
@@ -226,6 +228,88 @@ describe("SqlConsole Copilot generation", () => {
       expect(
         view.getByLabelText("Ask Copilot for a query"),
       ).toBeTruthy();
+    });
+  });
+
+  describe("SqlConsole manual queries", () => {
+    it("replaces a submitted statement with its formatted version", async () => {
+      vi.mocked(runSqlConsoleAction).mockResolvedValue({
+        status: "success",
+        message: "Query returned 0 rows",
+        result: {
+          columns: ["year"],
+          rows: [],
+          rowCount: 0,
+          truncated: false,
+        },
+        generatedQuery: null,
+        formattedStatement: "SELECT\n  year\nFROM\n  seasons",
+      });
+
+      const view = render(<SqlConsole copilotAvailable={false} />);
+      fireEvent.change(view.getByLabelText("SQL statement"), {
+        target: { value: "select year from seasons" },
+      });
+      fireEvent.submit(
+        view.getByLabelText("SQL statement").closest("form")!,
+      );
+
+      await waitFor(() => {
+        expect(
+          (view.getByLabelText("SQL statement") as HTMLTextAreaElement)
+            .value,
+        ).toBe("SELECT\n  year\nFROM\n  seasons");
+      });
+    });
+
+    it("preserves edits made while a submitted query is running", async () => {
+      let resolveAction:
+        | ((
+            state: Awaited<
+              ReturnType<typeof runSqlConsoleAction>
+            >,
+          ) => void)
+        | undefined;
+      const actionResult = new Promise<
+        Awaited<ReturnType<typeof runSqlConsoleAction>>
+      >((resolve) => {
+        resolveAction = resolve;
+      });
+      vi.mocked(runSqlConsoleAction).mockReturnValue(actionResult);
+
+      const view = render(<SqlConsole copilotAvailable={false} />);
+      const statement = view.getByLabelText(
+        "SQL statement",
+      ) as HTMLTextAreaElement;
+      fireEvent.change(statement, {
+        target: { value: "select year from seasons" },
+      });
+      fireEvent.submit(statement.closest("form")!);
+      fireEvent.change(statement, {
+        target: {
+          value: "select year, display_name from seasons",
+        },
+      });
+
+      await act(async () => {
+        resolveAction?.({
+          status: "success",
+          message: "Query returned 0 rows",
+          result: {
+            columns: ["year"],
+            rows: [],
+            rowCount: 0,
+            truncated: false,
+          },
+          generatedQuery: null,
+          formattedStatement: "SELECT\n  year\nFROM\n  seasons",
+        });
+        await actionResult;
+      });
+
+      expect(statement.value).toBe(
+        "select year, display_name from seasons",
+      );
     });
   });
 });

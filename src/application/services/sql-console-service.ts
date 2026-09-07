@@ -1,4 +1,5 @@
 import { SafeOperationalError } from "@/application/errors";
+import { format as formatSql } from "sql-formatter";
 import type {
   DatabaseProvider,
   ReadOnlyQueryResult,
@@ -38,8 +39,28 @@ export function normalizeSqlConsoleQuery(
     );
   }
 
+  let formattedStatement: string;
+
+  try {
+    formattedStatement = formatSql(trimmedStatement, {
+      language: "sqlite",
+      keywordCase: "upper",
+      tabWidth: 2,
+    });
+  } catch {
+    throw new SafeOperationalError(
+      "The SQL query could not be formatted",
+    );
+  }
+
+  if (formattedStatement.length > SQL_CONSOLE_MAX_STATEMENT_LENGTH) {
+    throw new SafeOperationalError(
+      `SQL queries must not exceed ${SQL_CONSOLE_MAX_STATEMENT_LENGTH} characters`,
+    );
+  }
+
   return {
-    statement: trimmedStatement,
+    statement: formattedStatement,
     parameters,
   };
 }

@@ -107,6 +107,7 @@ export async function POST(request: Request) {
             statement: query.statement,
             parameters: JSON.stringify(query.parameters),
           },
+          formattedStatement: null,
         };
 
         if (body.runGeneratedQuery) {

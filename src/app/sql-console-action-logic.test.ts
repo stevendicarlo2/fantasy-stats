@@ -25,8 +25,45 @@ describe("executeSqlConsoleAction", () => {
       message: "Query returned 1 row",
     });
     expect(service.execute).toHaveBeenCalledWith(
-      "SELECT ? AS season_year",
+      "SELECT\n  ? AS season_year",
       [2017, "regular", null],
+    );
+  });
+
+  it("formats a manually submitted query before executing it", async () => {
+    const formattedStatement = [
+      "SELECT",
+      "  year,",
+      "  count(*) AS total",
+      "FROM",
+      "  seasons",
+      "GROUP BY",
+      "  year",
+    ].join("\n");
+    const service = {
+      execute: vi.fn().mockResolvedValue({
+        columns: ["year", "total"],
+        rows: [],
+        rowCount: 0,
+        truncated: false,
+      }),
+    };
+    const formData = new FormData();
+    formData.set(
+      "statement",
+      "select year,count(*) as total from seasons group by year",
+    );
+    formData.set("parameters", "[]");
+
+    await expect(
+      executeSqlConsoleAction(formData, () => service),
+    ).resolves.toMatchObject({
+      status: "success",
+      formattedStatement,
+    });
+    expect(service.execute).toHaveBeenCalledWith(
+      formattedStatement,
+      [],
     );
   });
 
@@ -45,6 +82,7 @@ describe("executeSqlConsoleAction", () => {
         "Parameters may contain only strings, finite numbers, and null",
       result: null,
       generatedQuery: null,
+      formattedStatement: null,
     });
   });
 
@@ -94,6 +132,7 @@ describe("executeSqlConsoleAction", () => {
         statement: "SELECT year FROM seasons WHERE year = ?",
         parameters: "[2017]",
       },
+      formattedStatement: null,
     });
     expect(console.execute).not.toHaveBeenCalled();
   });
@@ -166,6 +205,7 @@ describe("executeSqlConsoleAction", () => {
         statement: "DELETE FROM seasons",
         parameters: "[]",
       },
+      formattedStatement: null,
     });
   });
 });

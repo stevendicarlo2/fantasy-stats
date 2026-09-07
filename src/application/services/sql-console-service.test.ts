@@ -6,7 +6,7 @@ import {
 } from "./sql-console-service";
 
 describe("SqlConsoleService", () => {
-  it("passes trimmed SQL and application-owned parameters to storage", async () => {
+  it("passes formatted SQL and application-owned parameters to storage", async () => {
     const database = {
       executeReadOnlyQuery: vi.fn().mockResolvedValue({
         columns: ["season_year"],
@@ -14,9 +14,23 @@ describe("SqlConsoleService", () => {
       }),
     };
     const service = new SqlConsoleService(database);
+    const formattedStatement = [
+      "SELECT",
+      "  year,",
+      "  count(*) AS total",
+      "FROM",
+      "  seasons",
+      "WHERE",
+      "  year > ?",
+      "GROUP BY",
+      "  year",
+    ].join("\n");
 
     await expect(
-      service.execute("  SELECT ? AS season_year  ", [2017]),
+      service.execute(
+        "  select year,count(*) as total from seasons where year > ? group by year  ",
+        [2017],
+      ),
     ).resolves.toEqual({
       columns: ["season_year"],
       rows: [{ season_year: 2017 }],
@@ -24,7 +38,7 @@ describe("SqlConsoleService", () => {
       truncated: false,
     });
     expect(database.executeReadOnlyQuery).toHaveBeenCalledWith({
-      statement: "SELECT ? AS season_year",
+      statement: formattedStatement,
       parameters: [2017],
     });
   });
