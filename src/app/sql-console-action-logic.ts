@@ -1,23 +1,35 @@
 import { SafeOperationalError } from "@/application/errors";
 import type { SqlParameter } from "@/application/ports/database-provider";
-import type {
-  SqlConsoleResult,
-  SqlConsoleService,
+import {
+  normalizeSqlConsoleQuery,
+  type SqlConsoleResult,
+  type SqlConsoleService,
 } from "@/application/services/sql-console-service";
+import type {
+  SqlQueryAssistantService,
+} from "@/application/services/sql-query-assistant-service";
 
 export interface SqlConsoleActionState {
   status: "idle" | "success" | "error";
   message: string;
   result: SqlConsoleResult | null;
+  generatedQuery: {
+    statement: string;
+    parameters: string;
+  } | null;
+  formattedStatement: string | null;
 }
 
 export const initialSqlConsoleActionState: SqlConsoleActionState = {
   status: "idle",
   message: "",
   result: null,
+  generatedQuery: null,
+  formattedStatement: null,
 };
 
 type ConsoleService = Pick<SqlConsoleService, "execute">;
+type AssistantService = Pick<SqlQueryAssistantService, "generate">;
 
 function requireString(formData: FormData, name: string) {
   const value = formData.get(name);
@@ -60,26 +72,41 @@ function parseParameters(value: string): SqlParameter[] {
   return parsed;
 }
 
+export function formatResultMessage(result: SqlConsoleResult) {
+  return result.truncated
+    ? `Query returned ${result.rowCount} rows; showing the first ${result.rows.length}`
+    : `Query returned ${result.rowCount} ${
+        result.rowCount === 1 ? "row" : "rows"
+      }`;
+}
+
 export async function executeSqlConsoleAction(
   formData: FormData,
   getService: () => ConsoleService | Promise<ConsoleService>,
 ): Promise<SqlConsoleActionState> {
+  let formattedStatement: string | null = null;
+
   try {
-    const statement = requireString(formData, "statement");
     const parameters = parseParameters(
       requireString(formData, "parameters"),
     );
+    const query = normalizeSqlConsoleQuery(
+      requireString(formData, "statement"),
+      parameters,
+    );
+    formattedStatement = query.statement;
     const service = await getService();
-    const result = await service.execute(statement, parameters);
+    const result = await service.execute(
+      query.statement,
+      query.parameters,
+    );
 
     return {
       status: "success",
-      message: result.truncated
-        ? `Query returned ${result.rowCount} rows; showing the first ${result.rows.length}`
-        : `Query returned ${result.rowCount} ${
-            result.rowCount === 1 ? "row" : "rows"
-          }`,
+      message: formatResultMessage(result),
       result,
+      generatedQuery: null,
+      formattedStatement,
     };
   } catch (error) {
     return {
@@ -89,6 +116,68 @@ export async function executeSqlConsoleAction(
           ? error.message
           : "The SQL query failed unexpectedly",
       result: null,
+      generatedQuery: null,
+      formattedStatement,
+    };
+  }
+}
+
+export async function executeSqlQueryAssistantAction(
+  formData: FormData,
+  runGeneratedQuery: boolean,
+  getServices: () =>
+    | {
+        assistant: AssistantService;
+        console: ConsoleService;
+      }
+    | Promise<{
+        assistant: AssistantService;
+        console: ConsoleService;
+      }>,
+): Promise<SqlConsoleActionState> {
+  let generatedQuery: SqlConsoleActionState["generatedQuery"] = null;
+
+  try {
+    const request = requireString(formData, "request");
+    const services = await getServices();
+    const query = await services.assistant.generate(request);
+    generatedQuery = {
+      statement: query.statement,
+      parameters: JSON.stringify(query.parameters),
+    };
+
+    if (!runGeneratedQuery) {
+      return {
+        status: "success",
+        message: "Query generated. Review or run it below.",
+        result: null,
+        generatedQuery,
+        formattedStatement: null,
+      };
+    }
+
+    const result = await services.console.execute(
+      query.statement,
+      query.parameters,
+    );
+
+    return {
+      status: "success",
+      message: `Query generated. ${formatResultMessage(result)}`,
+      result,
+      generatedQuery,
+      formattedStatement: null,
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message:
+        error instanceof SafeOperationalError
+          ? error.message
+          : "Copilot query generation failed unexpectedly",
+      result: null,
+      generatedQuery,
+      formattedStatement: null,
     };
   }
 }

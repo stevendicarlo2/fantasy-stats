@@ -670,6 +670,68 @@ button.filter-chip.selected {
   font-weight: 650;
 }
 
+.copilot-query-builder {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #27483a;
+  border-radius: 0.75rem;
+  background: rgb(11 33 24 / 55%);
+}
+
+.copilot-query-builder .button-row {
+  margin-top: 0;
+}
+
+.copilot-question,
+.copilot-progress,
+.copilot-response {
+  padding: 0.85rem 1rem;
+  border-radius: 0.7rem;
+}
+
+.copilot-question {
+  border: 1px solid #426657;
+  background: #0b2118;
+}
+
+.copilot-response {
+  border: 1px solid rgb(114 217 165 / 45%);
+  background: rgb(45 125 86 / 16%);
+}
+
+.copilot-question span,
+.copilot-progress span,
+.copilot-response span {
+  color: #72d9a5;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.copilot-question p,
+.copilot-response p {
+  margin: 0.35rem 0 0;
+  color: #dce7e1;
+  white-space: pre-wrap;
+}
+
+.copilot-progress {
+  border: 1px solid #315245;
+  background: rgb(11 33 24 / 72%);
+}
+
+.copilot-progress ul {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+  color: #b9c8c0;
+  font-size: 0.85rem;
+}
+
 .sql-editor,
 .parameter-editor {
   font-family:

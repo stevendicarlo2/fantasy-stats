@@ -8,8 +8,11 @@ import { SqlConsole } from "./sql-console";
 
 async function loadSqlConsole() {
   try {
-    await getWebRuntime();
-    return { ok: true as const };
+    const runtime = await getWebRuntime();
+    const copilotAvailable =
+      await runtime.sqlQueryAssistantService.isAvailable();
+
+    return { ok: true as const, copilotAvailable };
   } catch (error) {
     return {
       ok: false as const,
@@ -55,7 +58,7 @@ export default async function SqlConsolePage() {
           </p>
         </div>
       </header>
-      <SqlConsole />
+      <SqlConsole copilotAvailable={pageData.copilotAvailable} />
     </main>
   );
 }

@@ -4,7 +4,9 @@ import { MatchupAdjustmentService } from "@/application/services/matchup-adjustm
 import { SeasonImportService } from "@/application/services/season-import-service";
 import { SeasonStatsService } from "@/application/services/season-stats-service";
 import { SqlConsoleService } from "@/application/services/sql-console-service";
+import { SqlQueryAssistantService } from "@/application/services/sql-query-assistant-service";
 import { EspnFantasySource } from "@/server/adapters/fantasy/espn/espn-source";
+import { CopilotCliSqlQueryGenerator } from "@/server/adapters/sql/copilot-cli-sql-query-generator";
 import {
   parseDatabaseEnvironment,
   parseEspnEnvironment,
@@ -26,6 +28,7 @@ export interface WebRuntime {
   seasonStatsService: SeasonStatsService;
   matchupAdjustmentService: MatchupAdjustmentService;
   sqlConsoleService: SqlConsoleService;
+  sqlQueryAssistantService: SqlQueryAssistantService;
 }
 
 export class WebStorageConfigurationError extends SafeOperationalError {
@@ -88,6 +91,7 @@ export async function createWebRuntime(
     espnS2: espnEnvironment.ESPN_S2,
     swid: espnEnvironment.ESPN_SWID,
   });
+  const sqlConsoleService = new SqlConsoleService(storage.database);
 
   return {
     storage,
@@ -102,6 +106,9 @@ export async function createWebRuntime(
     matchupAdjustmentService: new MatchupAdjustmentService({
       database: storage.database,
     }),
-    sqlConsoleService: new SqlConsoleService(storage.database),
+    sqlConsoleService,
+    sqlQueryAssistantService: new SqlQueryAssistantService(
+      new CopilotCliSqlQueryGenerator(process.cwd()),
+    ),
   };
 }
