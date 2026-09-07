@@ -6,8 +6,21 @@ import {
 } from "./sql-query-assistant-service";
 
 describe("SqlQueryAssistantService", () => {
+  it("checks generator availability once per service instance", async () => {
+    const generator = {
+      checkAvailability: vi.fn().mockResolvedValue(true),
+      generate: vi.fn(),
+    };
+    const service = new SqlQueryAssistantService(generator);
+
+    await expect(service.isAvailable()).resolves.toBe(true);
+    await expect(service.isAvailable()).resolves.toBe(true);
+    expect(generator.checkAvailability).toHaveBeenCalledOnce();
+  });
+
   it("trims the request and normalizes the generated query", async () => {
     const generator = {
+      checkAvailability: vi.fn(),
       generate: vi.fn().mockResolvedValue({
         statement: "  SELECT year FROM seasons  ",
         parameters: [],
@@ -27,7 +40,10 @@ describe("SqlQueryAssistantService", () => {
   });
 
   it("rejects blank and oversized requests before invoking Copilot", async () => {
-    const generator = { generate: vi.fn() };
+    const generator = {
+      checkAvailability: vi.fn(),
+      generate: vi.fn(),
+    };
     const service = new SqlQueryAssistantService(generator);
 
     await expect(service.generate(" ")).rejects.toThrow(
@@ -43,6 +59,7 @@ describe("SqlQueryAssistantService", () => {
 
   it("rejects generated output that exceeds console limits", async () => {
     const service = new SqlQueryAssistantService({
+      checkAvailability: vi.fn(),
       generate: vi.fn().mockResolvedValue({
         statement: "SELECT 1",
         parameters: Array.from({ length: 51 }, () => null),

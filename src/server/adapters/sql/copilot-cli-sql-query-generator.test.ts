@@ -8,7 +8,39 @@ import { CopilotCliSqlQueryGenerator } from "./copilot-cli-sql-query-generator";
 const execFileAsync = promisify(execFile);
 
 describe("CopilotCliSqlQueryGenerator", () => {
-  it("runs Copilot without tools and validates its JSON response", async () => {
+  it("checks whether the local Copilot executable can start", async () => {
+    const availableExecutor = vi.fn().mockResolvedValue({
+      stdout: "GitHub Copilot CLI 1.0.84",
+      stderr: "",
+    });
+    const unavailableExecutor = vi
+      .fn()
+      .mockRejectedValue(new Error("missing"));
+
+    await expect(
+      new CopilotCliSqlQueryGenerator(
+        "/application",
+        availableExecutor,
+      ).checkAvailability(),
+    ).resolves.toBe(true);
+    await expect(
+      new CopilotCliSqlQueryGenerator(
+        "/application",
+        unavailableExecutor,
+      ).checkAvailability(),
+    ).resolves.toBe(false);
+
+    expect(availableExecutor).toHaveBeenCalledWith(
+      "copilot",
+      ["--version"],
+      expect.objectContaining({
+        cwd: "/application",
+        timeout: 5_000,
+      }),
+    );
+  });
+
+  it("runs Copilot with repository read access and validates its JSON response", async () => {
     const executor = vi.fn().mockResolvedValue({
       stdout: JSON.stringify({
         statement: "SELECT year FROM seasons WHERE year = ?",
@@ -31,14 +63,16 @@ describe("CopilotCliSqlQueryGenerator", () => {
     expect(executor).toHaveBeenCalledOnce();
     const [command, args, options] = executor.mock.calls[0];
     expect(command).toBe("copilot");
+    expect(args).toContain("--available-tools=view,glob");
+    expect(args).toContain("--allow-tool=read");
     expect(args).toContain(
-      "--available-tools=__fantasy_stats_sql_generator_no_tools__",
+      "--deny-tool=shell,write,web_fetch,web_search,task",
     );
-    expect(args).toContain(
-      "--deny-tool=shell,read,write,web_fetch,web_search,task",
-    );
+    expect(args).toContain("--disallow-temp-dir");
     expect(args).toContain("--disable-builtin-mcps");
     expect(args).toContain("--no-custom-instructions");
+    expect(args.at(-1)).toContain("docs/sql-console.md");
+    expect(args.at(-1)).toContain("migrations/");
     expect(args.at(-1)).toContain("Show the 2017 season");
     expect(options).toMatchObject({
       cwd: "/application",

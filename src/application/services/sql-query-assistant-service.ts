@@ -9,7 +9,14 @@ import { normalizeSqlConsoleQuery } from "./sql-console-service";
 export const SQL_QUERY_REQUEST_MAX_LENGTH = 2_000;
 
 export class SqlQueryAssistantService {
+  private availability: Promise<boolean> | null = null;
+
   constructor(private readonly generator: SqlQueryGenerator) {}
+
+  isAvailable() {
+    this.availability ??= this.generator.checkAvailability();
+    return this.availability;
+  }
 
   async generate(request: string): Promise<GeneratedSqlQuery> {
     const trimmedRequest = request.trim();

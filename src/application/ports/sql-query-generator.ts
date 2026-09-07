@@ -6,5 +6,6 @@ export interface GeneratedSqlQuery {
 }
 
 export interface SqlQueryGenerator {
+  checkAvailability(): Promise<boolean>;
   generate(request: string): Promise<GeneratedSqlQuery>;
 }

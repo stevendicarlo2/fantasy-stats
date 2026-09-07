@@ -16,7 +16,11 @@ function formatCell(value: string | number | null) {
   return value === null ? "NULL" : String(value);
 }
 
-export function SqlConsole() {
+interface SqlConsoleProps {
+  copilotAvailable: boolean;
+}
+
+export function SqlConsole({ copilotAvailable }: SqlConsoleProps) {
   const initialQuery = sqlStarterQueries[0];
   const [statement, setStatement] = useState(initialQuery.statement);
   const [parameters, setParameters] = useState(initialQuery.parameters);
@@ -76,8 +80,8 @@ export function SqlConsole() {
           <code>EXPLAIN</code> statement is accepted. Mutation keywords are
           rejected.
         </p>
-        <form action={formAction} className="sql-form">
-          <div className="copilot-query-builder">
+        {copilotAvailable ? (
+          <form action={formAction} className="copilot-query-builder">
             <label htmlFor="sql-request">Ask Copilot for a query</label>
             <textarea
               id="sql-request"
@@ -87,8 +91,9 @@ export function SqlConsole() {
               maxLength={2000}
             />
             <p className="field-help">
-              Runs the local Copilot CLI with schema context and no tools. The
-              generated SQL still uses this console&apos;s read-only checks.
+              Runs the local Copilot CLI with read-only access to this
+              repository&apos;s schema and scoring documentation. The generated
+              SQL still uses this console&apos;s read-only checks.
             </p>
             <div className="button-row">
               <button
@@ -109,8 +114,15 @@ export function SqlConsole() {
                 Generate &amp; run
               </button>
             </div>
-          </div>
+          </form>
+        ) : (
+          <p className="action-message error">
+            Copilot query generation is unavailable. Install and authenticate
+            Copilot CLI, then restart the application.
+          </p>
+        )}
 
+        <form action={formAction} className="sql-form">
           <label htmlFor="sql-statement">SQL statement</label>
           <textarea
             id="sql-statement"
