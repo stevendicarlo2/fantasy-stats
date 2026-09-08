@@ -489,13 +489,14 @@ Each dataset gets:
 Do not append rosters, transactions, or NFL stats to `SeasonImportSnapshot`.
 Separate snapshots preserve the required failure boundaries.
 
-### Refresh-all orchestration
+### Season sync orchestration
 
-The existing import/refresh UI remains season-scoped.
+The season sync UI remains season-scoped.
 
-For a new season or "Refresh all data":
+When syncing a season:
 
-1. Import or refresh core data.
+1. Import core data when the season is new, or refresh it when it already
+   exists.
 2. If core fails, stop. Supplemental datasets require the canonical season.
 3. Run roster and transaction/draft imports independently.
 4. After those attempts, run player-game statistics using every canonical
@@ -559,7 +560,7 @@ Keep each step independently green before moving to the next:
 4. Implement the public ESPN NFL game adapter. This step is complete when
    fixtures map all approved statistics, exact field-goal distances, and
    successful two-point conversions through ESPN athlete IDs.
-5. Implement the four dataset services and refresh-all orchestration. This step
+5. Implement the four dataset services and season sync orchestration. This step
    is complete when core gating, supplemental independence, atomic replacement,
    and targeted retries are covered by service tests.
 6. Add application reads and the dedicated matchup route. This step is complete
@@ -580,9 +581,11 @@ Extend the imported-season table to show dataset status for:
 - Transactions
 - Player stats
 
-Keep one primary import/refresh-all action for the selected season. Show
-targeted retry controls for failed roster, transaction, and player-stat
-datasets. Show provider-unavailable datasets without a retry button.
+Keep one primary sync action for the selected season. Allow the user to select
+any subset of datasets, requiring core only when the season is new, and show
+live status as each selected dataset runs in dependency order. Show targeted
+retry controls for failed roster, transaction, and player-stat datasets. Show
+provider-unavailable datasets without a retry button.
 
 Partial success must be explicit. Do not collapse it into a generic successful
 or failed season message.

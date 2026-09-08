@@ -8,7 +8,10 @@ import {
 } from "./adjustment-action-logic";
 import {
   executeImportAction,
+  executeSeasonDatasetAction,
   type ImportActionState,
+  type SeasonDatasetActionInput,
+  type SeasonDatasetActionResult,
 } from "./import-action-logic";
 import {
   executeSqlConsoleAction,
@@ -27,6 +30,21 @@ export async function runSeasonAction(
   });
 
   if (result.status === "success" || result.status === "partial") {
+    revalidatePath("/");
+  }
+
+  return result;
+}
+
+export async function runSeasonDatasetAction(
+  input: SeasonDatasetActionInput,
+): Promise<SeasonDatasetActionResult> {
+  const result = await executeSeasonDatasetAction(input, async () => {
+    const runtime = await getWebRuntime();
+    return runtime.seasonDataImportService;
+  });
+
+  if (result.status === "succeeded" || result.status === "unavailable") {
     revalidatePath("/");
   }
 

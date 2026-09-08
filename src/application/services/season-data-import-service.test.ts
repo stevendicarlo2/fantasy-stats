@@ -17,10 +17,59 @@ function run(dataset: "core" | "rosters" | "transactions" | "player_stats") {
 }
 
 describe("SeasonDataImportService", () => {
+  it("syncs supplemental datasets using the selected core operation", async () => {
+    const core = {
+      importSeason: vi.fn(),
+      refreshSeason: vi.fn(),
+      syncSeason: vi.fn().mockResolvedValue(run("core")),
+    };
+    const supplemental = {
+      importRosters: vi.fn().mockResolvedValue(run("rosters")),
+      importTransactions: vi.fn().mockResolvedValue(run("transactions")),
+      importPlayerStats: vi.fn().mockResolvedValue(run("player_stats")),
+    };
+    const service = new SeasonDataImportService(core, supplemental);
+
+    await service.syncSeason(2025);
+
+    expect(core.syncSeason).toHaveBeenCalledWith(2025);
+    expect(supplemental.importRosters).toHaveBeenCalledWith(2025, "refresh");
+    expect(supplemental.importTransactions).toHaveBeenCalledWith(
+      2025,
+      "refresh",
+    );
+    expect(supplemental.importPlayerStats).toHaveBeenCalledWith(
+      2025,
+      "refresh",
+    );
+  });
+
+  it("syncs one selected dataset with the requested operation", async () => {
+    const core = {
+      importSeason: vi.fn(),
+      refreshSeason: vi.fn(),
+      syncSeason: vi.fn(),
+    };
+    const supplemental = {
+      importRosters: vi.fn().mockResolvedValue(run("rosters")),
+      importTransactions: vi.fn(),
+      importPlayerStats: vi.fn(),
+    };
+    const service = new SeasonDataImportService(core, supplemental);
+
+    await expect(
+      service.syncDataset(2025, "rosters", "refresh"),
+    ).resolves.toEqual(run("rosters"));
+    expect(supplemental.importRosters).toHaveBeenCalledWith(2025, "refresh");
+    expect(core.importSeason).not.toHaveBeenCalled();
+    expect(core.refreshSeason).not.toHaveBeenCalled();
+  });
+
   it("keeps supplemental failures independent and still runs player stats", async () => {
     const core = {
       importSeason: vi.fn(),
       refreshSeason: vi.fn().mockResolvedValue(run("core")),
+      syncSeason: vi.fn(),
     };
     const supplemental = {
       importRosters: vi.fn().mockRejectedValue(new Error("rosters failed")),
@@ -64,6 +113,7 @@ describe("SeasonDataImportService", () => {
     const core = {
       importSeason: vi.fn(),
       refreshSeason: vi.fn().mockRejectedValue(coreError),
+      syncSeason: vi.fn(),
     };
     const supplemental = {
       importRosters: vi.fn(),

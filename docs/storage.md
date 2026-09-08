@@ -75,7 +75,12 @@ FANTASY_STATS_LOCAL_DATABASE_FILE=.data/fantasy-stats.db
 The database-file setting is optional and defaults to the path shown above.
 The dashboard applies migrations during server initialization, lists imported
 seasons and recent import runs, shows the latest state of each dataset, and
-provides full refresh and targeted supplemental retry actions.
+provides season sync and targeted supplemental retry actions. Season sync
+allows any subset of core, roster, transaction/draft, and player-stat data.
+Core is required when importing a new season. Selected datasets run in
+dependency order with live per-dataset progress. The dataset selector is
+collapsed by default and summarizes the current selection. Sync imports a
+season when it is new and refreshes it when it already exists.
 Imported season links show cumulative regular-season ANP qualification
 standings and weekly effective-score, NP, head-to-head bonus, and ANP results.
 Each matchup links to weekly roster detail with actual and projected fantasy

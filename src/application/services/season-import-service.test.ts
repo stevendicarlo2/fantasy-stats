@@ -208,6 +208,27 @@ describe("SeasonImportService", () => {
     expect(getSeasonImportSnapshot).not.toHaveBeenCalled();
   });
 
+  it("syncs a season using the operation that matches persisted state", async () => {
+    const service = createService();
+
+    await service.syncSeason(2025);
+    expect(startImportRun).toHaveBeenLastCalledWith(
+      expect.objectContaining({ operation: "import" }),
+    );
+
+    hasSeasonImport.mockResolvedValue(true);
+    commitSeasonImport.mockResolvedValue({
+      ...createSucceededImportRun(),
+      operation: "refresh",
+    });
+
+    await service.syncSeason(2025);
+    expect(startImportRun).toHaveBeenLastCalledWith(
+      expect.objectContaining({ operation: "refresh" }),
+    );
+    expect(hasSeasonImport).toHaveBeenCalledTimes(2);
+  });
+
   it("rejects import and refresh precondition violations before auditing", async () => {
     const service = createService();
     hasSeasonImport.mockResolvedValueOnce(true);

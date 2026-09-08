@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import { SafeOperationalError } from "@/application/errors";
 import type { ImportRun } from "@/domain/types";
 
-import { executeImportAction } from "./import-action-logic";
+import {
+  executeImportAction,
+  executeSeasonDatasetAction,
+} from "./import-action-logic";
 
 const importRun: ImportRun = {
   id: "10000000-0000-4000-8000-000000000001",
@@ -36,20 +39,16 @@ function fullResult() {
 }
 
 describe("executeImportAction", () => {
-  it("routes validated import and refresh requests", async () => {
-    const importSeason = vi.fn().mockResolvedValue(fullResult());
-    const refreshSeason = vi.fn().mockResolvedValue({
-      ...fullResult(),
-      core: { ...importRun, operation: "refresh" },
-    });
-    const importForm = new FormData();
-    importForm.set("operation", "import");
-    importForm.set("year", "2025");
+  it("routes validated sync requests", async () => {
+    const syncSeason = vi.fn().mockResolvedValue(fullResult());
+    const syncForm = new FormData();
+    syncForm.set("operation", "sync");
+    syncForm.set("year", "2025");
 
     await expect(
-      executeImportAction(importForm, () => ({
-        importSeason,
-        refreshSeason,
+      executeImportAction(syncForm, () => ({
+        syncSeason,
+        syncDataset: vi.fn(),
         retryRosters: vi.fn(),
         retryTransactions: vi.fn(),
         retryPlayerStats: vi.fn(),
@@ -58,19 +57,7 @@ describe("executeImportAction", () => {
       status: "success",
       message: "Season 2025 import succeeded",
     });
-    expect(importSeason).toHaveBeenCalledWith(2025);
-
-    const refreshForm = new FormData();
-    refreshForm.set("operation", "refresh");
-    refreshForm.set("year", "2025");
-    await executeImportAction(refreshForm, () => ({
-      importSeason,
-      refreshSeason,
-      retryRosters: vi.fn(),
-      retryTransactions: vi.fn(),
-      retryPlayerStats: vi.fn(),
-    }));
-    expect(refreshSeason).toHaveBeenCalledWith(2025);
+    expect(syncSeason).toHaveBeenCalledWith(2025);
   });
 
   it("returns validation errors without creating a service", async () => {
@@ -87,15 +74,15 @@ describe("executeImportAction", () => {
 
   it("returns safe failures and hides unknown details", async () => {
     const formData = new FormData();
-    formData.set("operation", "import");
+    formData.set("operation", "sync");
     formData.set("year", "2025");
 
     await expect(
       executeImportAction(formData, () => ({
-        importSeason: vi
+        syncSeason: vi
           .fn()
           .mockRejectedValue(new SafeOperationalError("ESPN unavailable")),
-        refreshSeason: vi.fn(),
+        syncDataset: vi.fn(),
         retryRosters: vi.fn(),
         retryTransactions: vi.fn(),
         retryPlayerStats: vi.fn(),
@@ -106,10 +93,10 @@ describe("executeImportAction", () => {
     });
     await expect(
       executeImportAction(formData, () => ({
-        importSeason: vi
+        syncSeason: vi
           .fn()
           .mockRejectedValue(new Error("private failure detail")),
-        refreshSeason: vi.fn(),
+        syncDataset: vi.fn(),
         retryRosters: vi.fn(),
         retryTransactions: vi.fn(),
         retryPlayerStats: vi.fn(),
@@ -122,7 +109,7 @@ describe("executeImportAction", () => {
 
   it("reports partial supplemental failures without hiding core success", async () => {
       const formData = new FormData();
-      formData.set("operation", "refresh");
+      formData.set("operation", "sync");
       formData.set("year", "2025");
       const result = {
         ...fullResult(),
@@ -134,8 +121,8 @@ describe("executeImportAction", () => {
 
       await expect(
         executeImportAction(formData, () => ({
-          importSeason: vi.fn(),
-          refreshSeason: vi.fn().mockResolvedValue(result),
+          syncSeason: vi.fn().mockResolvedValue(result),
+          syncDataset: vi.fn(),
           retryRosters: vi.fn(),
           retryTransactions: vi.fn(),
           retryPlayerStats: vi.fn(),
@@ -144,6 +131,67 @@ describe("executeImportAction", () => {
         status: "partial",
         message:
           "Season 2025 core data succeeded, but rosters failed. Existing supplemental data was preserved.",
+    });
+  });
+
+  describe("executeSeasonDatasetAction", () => {
+    it("syncs one validated dataset", async () => {
+      const syncDataset = vi.fn().mockResolvedValue({
+        ...importRun,
+        operation: "refresh",
+        dataset: "rosters",
+      });
+
+      await expect(
+        executeSeasonDatasetAction(
+          {
+            dataset: "rosters",
+            operation: "refresh",
+            year: 2025,
+          },
+          () => ({
+            syncSeason: vi.fn(),
+            syncDataset,
+            retryRosters: vi.fn(),
+            retryTransactions: vi.fn(),
+            retryPlayerStats: vi.fn(),
+          }),
+        ),
+      ).resolves.toEqual({
+        dataset: "rosters",
+        status: "succeeded",
+        message: "rosters succeeded",
+      });
+      expect(syncDataset).toHaveBeenCalledWith(
+        2025,
+        "rosters",
+        "refresh",
+      );
+    });
+
+    it("returns a safe dataset failure", async () => {
+      await expect(
+        executeSeasonDatasetAction(
+          {
+            dataset: "player_stats",
+            operation: "refresh",
+            year: 2025,
+          },
+          () => ({
+            syncSeason: vi.fn(),
+            syncDataset: vi
+              .fn()
+              .mockRejectedValue(new SafeOperationalError("Stats unavailable")),
+            retryRosters: vi.fn(),
+            retryTransactions: vi.fn(),
+            retryPlayerStats: vi.fn(),
+          }),
+        ),
+      ).resolves.toEqual({
+        dataset: "player_stats",
+        status: "failed",
+        message: "Stats unavailable",
+      });
     });
   });
 });

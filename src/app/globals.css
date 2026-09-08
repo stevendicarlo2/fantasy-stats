@@ -1040,13 +1040,122 @@ button.danger {
 
 .import-form {
   display: grid;
-  gap: 0.75rem;
-  margin-top: 2rem;
+  gap: 0.55rem;
+  margin-top: 1.25rem;
 }
 
 .import-form label {
   color: #dce7e1;
   font-weight: 650;
+}
+
+.import-form > label {
+  font-size: 0.85rem;
+}
+
+.import-form select {
+  padding: 0.65rem 0.75rem;
+}
+
+.sync-dataset-details {
+  overflow: hidden;
+  margin-top: 0.15rem;
+  border: 1px solid #315245;
+  border-radius: 0.7rem;
+  background: rgb(11 33 24 / 55%);
+}
+
+.sync-dataset-details summary {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.75rem;
+  color: #dce7e1;
+  cursor: pointer;
+  list-style: none;
+}
+
+.sync-dataset-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.sync-dataset-details summary::before {
+  content: "›";
+  color: #72d9a5;
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: transform 120ms ease;
+}
+
+.sync-dataset-details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.sync-dataset-details summary strong {
+  color: #9aebbe;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sync-dataset-picker {
+  display: grid;
+  border-top: 1px solid #315245;
+}
+
+.sync-dataset-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid rgb(49 82 69 / 60%);
+  font-size: 0.82rem;
+}
+
+.sync-dataset-option span {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.sync-progress {
+  color: #91a99e;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sync-progress.running,
+.sync-progress.waiting {
+  color: #f2d18c;
+}
+
+.sync-progress.succeeded {
+  color: #9aebbe;
+}
+
+.sync-progress.failed {
+  color: #f6aaa4;
+}
+
+.sync-note {
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  color: #91a99e;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.import-form .button-row {
+  display: grid;
+  margin-top: 0.2rem;
+}
+
+.import-form button {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
 }
 
 select {

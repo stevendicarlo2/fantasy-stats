@@ -265,11 +265,10 @@ Validate required environment values at startup or before an import and return a
 
 Expose manual season-level operations:
 
-- `importSeason(year)` for historical backfill
-- `refreshSeason(year)` for idempotently updating an existing season
+- A season sync that imports new seasons and refreshes existing seasons
 - Targeted roster, transaction/draft, and player-stat retries
 
-These names describe the desired application behavior, not a required final TypeScript signature.
+The selected import or refresh operation remains explicit in audit records.
 
 Core data must succeed before supplemental imports begin. Roster and
 transaction imports run independently; player statistics run afterward so

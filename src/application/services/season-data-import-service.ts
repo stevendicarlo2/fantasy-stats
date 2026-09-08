@@ -1,4 +1,5 @@
 import type { ImportOperation, ImportRun } from "@/domain/types";
+import type { ImportDataset } from "@/domain/types";
 
 import type { SeasonImportService } from "./season-import-service";
 import type { SupplementalImportService } from "./supplemental-import-service";
@@ -12,7 +13,7 @@ export interface SeasonDataImportResult {
 
 type CoreImportService = Pick<
   SeasonImportService,
-  "importSeason" | "refreshSeason"
+  "importSeason" | "refreshSeason" | "syncSeason"
 >;
 type SupplementalService = Pick<
   SupplementalImportService,
@@ -31,6 +32,33 @@ export class SeasonDataImportService {
 
   refreshSeason(year: number) {
     return this.execute("refresh", year);
+  }
+
+  async syncSeason(year: number) {
+    const core = await this.core.syncSeason(year);
+    return this.importSupplemental(core, year, core.operation);
+  }
+
+  syncDataset(
+    year: number,
+    dataset: ImportDataset,
+    operation: ImportOperation,
+  ): Promise<ImportRun> {
+    if (dataset === "core") {
+      return operation === "import"
+        ? this.core.importSeason(year)
+        : this.core.refreshSeason(year);
+    }
+
+    if (dataset === "rosters") {
+      return this.supplemental.importRosters(year, operation);
+    }
+
+    if (dataset === "transactions") {
+      return this.supplemental.importTransactions(year, operation);
+    }
+
+    return this.supplemental.importPlayerStats(year, operation);
   }
 
   retryRosters(year: number) {
@@ -53,6 +81,15 @@ export class SeasonDataImportService {
       operation === "import"
         ? await this.core.importSeason(year)
         : await this.core.refreshSeason(year);
+
+    return this.importSupplemental(core, year, operation);
+  }
+
+  private async importSupplemental(
+    core: ImportRun,
+    year: number,
+    operation: ImportOperation,
+  ): Promise<SeasonDataImportResult> {
     const rosters = await settle(
       this.supplemental.importRosters(year, operation),
     );

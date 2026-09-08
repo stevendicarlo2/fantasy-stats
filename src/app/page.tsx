@@ -64,10 +64,9 @@ export default async function Home() {
         <header className="hero compact">
           <div>
             <p className="eyebrow">Fantasy Stats</p>
-            <h1>Season imports</h1>
+            <h1>Season data</h1>
             <p className="summary">
-              Import canonical ESPN history, refresh corrections, and monitor
-              persisted audit results.
+              Sync canonical ESPN history and monitor persisted audit results.
             </p>
           </div>
           <div className="hero-actions">
@@ -84,14 +83,18 @@ export default async function Home() {
         <section className="dashboard-grid">
           <article className="panel">
             <p className="panel-kicker">Data management</p>
-            <h2>Import or refresh a season</h2>
+            <h2>Sync a season</h2>
             <p>
-              Import creates core season history and all available
-              supplemental datasets. Refresh replaces provider data while
-              preserving manual score adjustments and any prior supplemental
-              snapshot whose refresh fails.
+              New seasons are imported automatically. Existing seasons are
+              refreshed while preserving manual score adjustments and any
+              prior supplemental snapshot whose refresh fails.
             </p>
-            <ImportForm years={dashboard.availableYears} />
+            <ImportForm
+              years={dashboard.availableYears}
+              importedYears={dashboard.importedSeasons.map(
+                (season) => season.year,
+              )}
+            />
           </article>
 
           <article className="panel">
@@ -106,8 +109,6 @@ export default async function Home() {
                     <tr>
                       <th>Season</th>
                       <th>Teams</th>
-                      <th>Matchups</th>
-                      <th>Scores</th>
                       <th>Supplemental datasets</th>
                     </tr>
                   </thead>
@@ -120,8 +121,6 @@ export default async function Home() {
                           </Link>
                         </td>
                         <td>{season.teamCount}</td>
-                        <td>{season.matchupCount}</td>
-                        <td>{season.scoreCount}</td>
                         <td>
                           <div className="dataset-status-list">
                             {importDatasets.map(([dataset, label]) => {

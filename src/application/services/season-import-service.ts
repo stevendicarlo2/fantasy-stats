@@ -72,6 +72,15 @@ export class SeasonImportService {
     return this.execute("refresh", year);
   }
 
+  async syncSeason(year: number): Promise<ImportRun> {
+    validateSeasonYear(year);
+    const operation = (await this.options.database.hasSeasonImport(year))
+      ? "refresh"
+      : "import";
+
+    return this.executeValidated(operation, year);
+  }
+
   private async execute(
     operation: ImportOperation,
     year: number,
@@ -79,6 +88,13 @@ export class SeasonImportService {
     validateSeasonYear(year);
     await this.assertOperationPrecondition(operation, year);
 
+    return this.executeValidated(operation, year);
+  }
+
+  private async executeValidated(
+    operation: ImportOperation,
+    year: number,
+  ): Promise<ImportRun> {
     const importRunId = this.createId();
     await this.options.database.startImportRun({
       id: importRunId,

@@ -5,8 +5,6 @@ import type { SeasonDatasetStatus } from "@/domain/types";
 export interface ImportedSeasonSummary {
   year: number;
   teamCount: number;
-  matchupCount: number;
-  scoreCount: number;
   datasetStatuses: SeasonDatasetStatus[];
 }
 
@@ -59,8 +57,6 @@ export class ImportDashboardService {
             {
               year: snapshot.season.year,
               teamCount: snapshot.season.teamCount,
-              matchupCount: snapshot.matchups.length,
-              scoreCount: snapshot.scores.length,
               datasetStatuses: statuses,
             },
           ]

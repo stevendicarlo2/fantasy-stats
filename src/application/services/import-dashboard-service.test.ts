@@ -62,8 +62,6 @@ describe("ImportDashboardService", () => {
         {
           year: 2024,
           teamCount: 2,
-          matchupCount: 0,
-          scoreCount: 0,
           datasetStatuses: [],
         },
       ],
