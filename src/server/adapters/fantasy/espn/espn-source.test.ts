@@ -845,13 +845,13 @@ describe("EspnFantasySource fetchTransactions", () => {
     const tradeItems = [
       { playerId: 601, type: "TRADE", fromTeamId: 1, toTeamId: 2 },
       { playerId: 602, type: "TRADE", fromTeamId: 2, toTeamId: 1 },
+      { playerId: 100001, type: "DROP", fromTeamId: 1, toTeamId: -1 },
     ];
     const transactionsPayload = {
       transactions: [
         {
           id: "900",
           type: "TRADE_ACCEPT",
-          status: "EXECUTED",
           scoringPeriodId: 1,
           relatedTransactionId: "800",
           proposedDate: 1000,
@@ -867,10 +867,25 @@ describe("EspnFantasySource fetchTransactions", () => {
           processDate: 6000,
           items: tradeItems,
         },
+        {
+          id: "902",
+          type: "TRADE_DECLINE",
+          status: "EXECUTED",
+          scoringPeriodId: 1,
+          relatedTransactionId: "899",
+          items: [
+            {
+              playerId: 603,
+              type: null,
+              fromTeamId: 1,
+              toTeamId: 2,
+            },
+          ],
+        },
       ],
     };
     const catalogPayload = {
-      players: [601, 602].map((id) => catalogPlayer(id)),
+      players: [601, 602, 603].map((id) => catalogPlayer(id)),
     };
     const source = createRoutedSource((url) => {
       const view = url.searchParams.get("view");

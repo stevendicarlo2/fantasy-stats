@@ -186,7 +186,7 @@ const espnDraftDetailResponseSchema = z.object({
 
 const espnTransactionItemSchema = z.object({
   playerId: z.int(),
-  type: z.string(),
+  type: z.string().nullable().optional(),
   fromTeamId: z.int().nullable().optional(),
   toTeamId: z.int().nullable().optional(),
 });
@@ -194,7 +194,7 @@ const espnTransactionItemSchema = z.object({
 const espnTransactionSchema = z.object({
   id: z.string(),
   type: z.string(),
-  status: z.string(),
+  status: z.string().nullable().optional(),
   scoringPeriodId: z.int().positive(),
   teamId: z.int().nullable().optional(),
   bidAmount: z.number().nonnegative().nullable().optional(),
@@ -430,6 +430,8 @@ const EXCLUDED_TRANSACTION_TYPES = new Set([
   "TRADE_DECLINE",
   "TRADE_VETO",
 ]);
+
+const ESPN_EMPTY_PLAYER_ID = 100001;
 
 const WAIVER_FAILURE_REASON_BY_ESPN_STATUS: Record<
   string,
@@ -1044,7 +1046,9 @@ export class EspnFantasySource
 
     for (const transaction of rawTransactionsById.values()) {
       for (const item of transaction.items ?? []) {
-        candidateExternalPlayerIds.add(item.playerId);
+        if (item.playerId !== ESPN_EMPTY_PLAYER_ID) {
+          candidateExternalPlayerIds.add(item.playerId);
+        }
       }
     }
 
@@ -1136,16 +1140,18 @@ export class EspnFantasySource
       transactionId: CanonicalId,
       items: EspnTransactionItem[],
     ) => {
-      items.forEach((item, ordinal) => {
-        transactionItems.push({
-          transactionId,
-          ordinal,
-          playerId: resolvePlayer(item.playerId),
-          action: transactionItemAction(item.type),
-          fromFranchiseId: resolveFranchise(item.fromTeamId),
-          toFranchiseId: resolveFranchise(item.toTeamId),
+      items
+        .filter((item) => item.playerId !== ESPN_EMPTY_PLAYER_ID)
+        .forEach((item, ordinal) => {
+          transactionItems.push({
+            transactionId,
+            ordinal,
+            playerId: resolvePlayer(item.playerId),
+            action: transactionItemAction(item.type),
+            fromFranchiseId: resolveFranchise(item.fromTeamId),
+            toFranchiseId: resolveFranchise(item.toTeamId),
+          });
         });
-      });
     };
 
     for (const transaction of rawTransactionsById.values()) {
@@ -1169,7 +1175,9 @@ export class EspnFantasySource
         transaction.type === "WAIVER"
       ) {
         const failureReason =
-          WAIVER_FAILURE_REASON_BY_ESPN_STATUS[transaction.status];
+          transaction.status == null
+            ? undefined
+            : WAIVER_FAILURE_REASON_BY_ESPN_STATUS[transaction.status];
 
         if (transaction.type === "WAIVER" && failureReason) {
           const transactionId = identities.resolve(
@@ -1201,7 +1209,7 @@ export class EspnFantasySource
 
         if (
           transaction.type === "WAIVER" &&
-          transaction.status.startsWith("FAILED_")
+          transaction.status?.startsWith("FAILED_")
         ) {
           throw new EspnMappingError(
             `ESPN waiver transaction ${transaction.id} has an unrecognized failure status ${transaction.status}`,
@@ -1236,7 +1244,9 @@ export class EspnFantasySource
 
       if (transaction.type === "WAIVER_ERROR") {
         const failureReason =
-          WAIVER_FAILURE_REASON_BY_ESPN_STATUS[transaction.status];
+          transaction.status == null
+            ? undefined
+            : WAIVER_FAILURE_REASON_BY_ESPN_STATUS[transaction.status];
 
         if (!failureReason) {
           throw new EspnMappingError(

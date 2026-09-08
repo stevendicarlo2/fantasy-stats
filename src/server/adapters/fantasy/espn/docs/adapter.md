@@ -98,6 +98,16 @@ Pending or canceled waivers, incomplete trade negotiation records, and
 slot-only lineup activity are excluded. Linked trade workflow records collapse
 to one canonical executed trade.
 
+Historical trade workflow records are not shape-consistent: accepted trades
+may omit `status`, and declined-trade items may contain a null action type.
+Boundary validation accepts those nullable fields because they are not needed
+for those workflow records. Any item included in a persisted transaction must
+still map to a recognized add, drop, or trade action.
+
+ESPN player ID `100001` is a no-player sentinel used to pad some asymmetric
+historical transaction records. It is excluded from player-catalog lookup and
+canonical transaction items; real player items in the same trade are retained.
+
 ## Verification
 
 Synthetic tests cover modern and legacy responses, canonical mapping,
