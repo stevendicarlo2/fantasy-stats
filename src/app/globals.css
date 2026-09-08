@@ -1116,11 +1116,25 @@ button.danger {
 
 .sync-dataset-option span {
   display: flex;
+  flex: 1;
   align-items: center;
   gap: 0.65rem;
+  min-width: 0;
+}
+
+.sync-dataset-option input[type="checkbox"] {
+  flex: 0 0 1rem;
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0.2rem;
+  accent-color: #72d9a5;
 }
 
 .sync-progress {
+  flex: 0 0 auto;
   color: #91a99e;
   font-size: 0.7rem;
   letter-spacing: 0.08em;
