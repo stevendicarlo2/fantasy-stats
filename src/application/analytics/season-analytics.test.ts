@@ -5,6 +5,7 @@ import {
   createDefaultAnalyticsFilters,
   filterAnalyticsRecords,
   findAnalyticsValueRange,
+  getLatestRecordedWeek,
   sortAnalyticsSummary,
   summarizeAnalytics,
 } from "./season-analytics";
@@ -68,6 +69,35 @@ describe("season analytics model", () => {
       tableMetric: "anp",
       tablePerspective: "team",
     });
+  });
+
+  it("clamps the default end week to the latest week with data", () => {
+    const partialSeasonRecords = records.filter(
+      (record) => record.week === 1,
+    );
+
+    expect(
+      createDefaultAnalyticsFilters(partialSeasonRecords, 1, 14),
+    ).toEqual({
+      selectedFranchiseIds: ["a", "b"],
+      startWeek: 1,
+      endWeek: 1,
+      metrics: ["anp"],
+      perspectives: ["team"],
+      tableMetric: "anp",
+      tablePerspective: "team",
+    });
+  });
+
+  it("finds the latest week with data, falling back when there is none", () => {
+    expect(getLatestRecordedWeek(records, 1)).toBe(2);
+    expect(
+      getLatestRecordedWeek(
+        records.filter((record) => record.week === 1),
+        1,
+      ),
+    ).toBe(1);
+    expect(getLatestRecordedWeek([], 1)).toBe(1);
   });
 
   it("filters by franchise and inclusive week range", () => {

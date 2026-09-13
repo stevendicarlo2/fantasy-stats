@@ -175,6 +175,87 @@ describe("SeasonStatsService", () => {
     });
   });
 
+  it("drops scheduled weeks that have not been played yet", async () => {
+    const database = {
+      getSeasonImportSnapshot: vi.fn().mockResolvedValue({
+        season: {
+          year: 2026,
+          teamCount: 2,
+          playoffTeamCount: 1,
+          regularSeasonStartWeek: 1,
+          regularSeasonEndWeek: 14,
+        },
+      }),
+      listImportedSeasonYears: vi.fn(),
+      listWeeklyTeamResults: vi.fn().mockResolvedValue([
+        {
+          matchupId: "11111111-1111-4111-8111-111111111111",
+          matchupSide: "home",
+          week: 1,
+          phase: "regular",
+          franchiseId: "22222222-2222-4222-8222-222222222222",
+          displayName: "Person One",
+          teamName: "Team One",
+          ownerName: null,
+          effectiveScore: 37.42,
+          nascarPoints: 2,
+          headToHeadBonus: 2,
+          adjustedNascarPoints: 4,
+        },
+        {
+          matchupId: "11111111-1111-4111-8111-111111111111",
+          matchupSide: "away",
+          week: 1,
+          phase: "regular",
+          franchiseId: "33333333-3333-4333-8333-333333333333",
+          displayName: "Person Two",
+          teamName: "Team Two",
+          ownerName: null,
+          effectiveScore: 0,
+          nascarPoints: 1,
+          headToHeadBonus: 0,
+          adjustedNascarPoints: 1,
+        },
+        {
+          matchupId: "44444444-4444-4444-8444-444444444444",
+          matchupSide: "home",
+          week: 2,
+          phase: "regular",
+          franchiseId: "22222222-2222-4222-8222-222222222222",
+          displayName: "Person One",
+          teamName: "Team One",
+          ownerName: null,
+          effectiveScore: 0,
+          nascarPoints: 0,
+          headToHeadBonus: 0,
+          adjustedNascarPoints: 0,
+        },
+        {
+          matchupId: "44444444-4444-4444-8444-444444444444",
+          matchupSide: "away",
+          week: 2,
+          phase: "regular",
+          franchiseId: "33333333-3333-4333-8333-333333333333",
+          displayName: "Person Two",
+          teamName: "Team Two",
+          ownerName: null,
+          effectiveScore: 0,
+          nascarPoints: 0,
+          headToHeadBonus: 0,
+          adjustedNascarPoints: 0,
+        },
+      ]),
+    };
+    const service = new SeasonStatsService(database);
+
+    const result = await service.getSeasonStats(2026);
+
+    expect(result?.matchups.map((matchup) => matchup.week)).toEqual([1]);
+    expect(
+      result?.analytics.every((record) => record.week === 1),
+    ).toBe(true);
+  });
+
   it("lists imported seasons for overview navigation", async () => {
     const database = {
       getSeasonImportSnapshot: vi.fn(),

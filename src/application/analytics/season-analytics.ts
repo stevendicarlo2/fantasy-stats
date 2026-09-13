@@ -79,17 +79,33 @@ export function listAnalyticsFranchises(
     );
 }
 
+// Weeks that haven't been played yet have no records at all (see
+// SeasonStatsService), so the latest week with data is the natural upper
+// bound for both the default filter selection and how far the week
+// range picker can be dragged.
+export function getLatestRecordedWeek(
+  records: SeasonAnalyticsRecord[],
+  fallback: number,
+): number {
+  return records.reduce(
+    (latest, record) => Math.max(latest, record.week),
+    fallback,
+  );
+}
+
 export function createDefaultAnalyticsFilters(
   records: SeasonAnalyticsRecord[],
   startWeek: number,
   endWeek: number,
 ): AnalyticsFilters {
+  const latestRecordedWeek = getLatestRecordedWeek(records, startWeek);
+
   return {
     selectedFranchiseIds: listAnalyticsFranchises(records).map(
       (franchise) => franchise.id,
     ),
     startWeek,
-    endWeek,
+    endWeek: Math.min(endWeek, latestRecordedWeek),
     metrics: ["anp"],
     perspectives: ["team"],
     tableMetric: "anp",

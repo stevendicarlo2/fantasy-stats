@@ -41,15 +41,27 @@ export function WeekRangeSlider({
   const activeHandle = useRef<
     "start" | "end" | "collapsed" | null
   >(null);
-  const rangeSpan = maximumWeek - minimumWeek || 1;
+  // When only one week has data, minimumWeek === maximumWeek: there's
+  // nothing to drag across, so the filled track should represent the
+  // single week by spanning the full width rather than collapsing to a
+  // zero-width dot, and pointer drags must not be able to compute a week
+  // outside the [minimumWeek, maximumWeek] bounds.
+  const hasRange = maximumWeek > minimumWeek;
+  const rangeSpan = hasRange ? maximumWeek - minimumWeek : 1;
   const rangeStyle = {
-    "--range-start": `${
-      ((startWeek - minimumWeek) / rangeSpan) * 100
-    }%`,
-    "--range-end": `${((endWeek - minimumWeek) / rangeSpan) * 100}%`,
+    "--range-start": hasRange
+      ? `${((startWeek - minimumWeek) / rangeSpan) * 100}%`
+      : "0%",
+    "--range-end": hasRange
+      ? `${((endWeek - minimumWeek) / rangeSpan) * 100}%`
+      : "100%",
   } as CSSProperties;
 
   function weekFromPointer(clientX: number, element: HTMLDivElement) {
+    if (!hasRange) {
+      return minimumWeek;
+    }
+
     const track = element
       .querySelector(".week-range-track")
       ?.getBoundingClientRect();
@@ -197,8 +209,8 @@ interface SeasonAnalyticsFiltersProps {
   filters: AnalyticsFilters;
   franchises: AnalyticsFranchise[];
   tableUsesFilters: boolean;
-  regularSeasonStartWeek: number;
-  regularSeasonEndWeek: number;
+  minimumWeek: number;
+  maximumWeek: number;
   defaultFilters: AnalyticsFilters;
   setFilters: Dispatch<SetStateAction<AnalyticsFilters>>;
 }
@@ -207,8 +219,8 @@ export function SeasonAnalyticsFilters({
   filters,
   franchises,
   tableUsesFilters,
-  regularSeasonStartWeek,
-  regularSeasonEndWeek,
+  minimumWeek,
+  maximumWeek,
   defaultFilters,
   setFilters,
 }: SeasonAnalyticsFiltersProps) {
@@ -357,8 +369,8 @@ export function SeasonAnalyticsFilters({
         <WeekRangeSlider
           startWeek={filters.startWeek}
           endWeek={filters.endWeek}
-          minimumWeek={regularSeasonStartWeek}
-          maximumWeek={regularSeasonEndWeek}
+          minimumWeek={minimumWeek}
+          maximumWeek={maximumWeek}
           onStartWeekChange={(startWeek) =>
             setFilters((current) => ({ ...current, startWeek }))
           }

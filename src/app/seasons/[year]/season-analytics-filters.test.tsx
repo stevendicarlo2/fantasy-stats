@@ -61,6 +61,47 @@ describe("WeekRangeSlider", () => {
     fireEvent.pointerMove(slider, { clientX: 80, pointerId: 2 });
     expect(onEndWeekChange).toHaveBeenLastCalledWith(9);
   });
+
+  it("stays pinned and fills the full track when only one week is available", () => {
+    const onStartWeekChange = vi.fn();
+    const onEndWeekChange = vi.fn();
+    const view = render(
+      <WeekRangeSlider
+        startWeek={1}
+        endWeek={1}
+        minimumWeek={1}
+        maximumWeek={1}
+        onStartWeekChange={onStartWeekChange}
+        onEndWeekChange={onEndWeekChange}
+      />,
+    );
+    const slider = view.container.querySelector(
+      ".week-range-slider",
+    ) as HTMLDivElement;
+    const track = view.container.querySelector(
+      ".week-range-track",
+    ) as HTMLDivElement;
+    slider.setPointerCapture = vi.fn();
+    slider.hasPointerCapture = vi.fn(() => true);
+    slider.releasePointerCapture = vi.fn();
+    track.getBoundingClientRect = vi.fn(
+      () =>
+        ({
+          left: 0,
+          width: 130,
+        }) as DOMRect,
+    );
+
+    expect(slider.style.getPropertyValue("--range-start")).toBe("0%");
+    expect(slider.style.getPropertyValue("--range-end")).toBe("100%");
+
+    fireEvent.pointerDown(slider, { clientX: 130, pointerId: 1 });
+    fireEvent.pointerMove(slider, { clientX: 130, pointerId: 1 });
+    fireEvent.pointerUp(slider, { pointerId: 1 });
+
+    expect(onStartWeekChange).not.toHaveBeenCalled();
+    expect(onEndWeekChange).not.toHaveBeenCalled();
+  });
 });
 
 describe("SeasonAnalyticsFilters", () => {
@@ -77,8 +118,8 @@ describe("SeasonAnalyticsFilters", () => {
           filters={filters}
           franchises={listAnalyticsFranchises(records)}
           tableUsesFilters
-          regularSeasonStartWeek={1}
-          regularSeasonEndWeek={2}
+          minimumWeek={1}
+          maximumWeek={2}
           defaultFilters={defaults}
           setFilters={setFilters}
         />

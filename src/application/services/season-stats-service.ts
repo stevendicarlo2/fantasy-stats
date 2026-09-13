@@ -99,7 +99,24 @@ export class SeasonStatsService {
         };
       },
     );
-    const analytics = matchups.flatMap((matchup) => {
+
+    // ESPN schedules every week's matchups up front, so weeks that haven't
+    // started yet come back with a 0 score for every team. Drop those
+    // not-yet-played weeks rather than showing an empty, scoreless week.
+    const playedWeeks = new Set(
+      matchups
+        .filter(
+          (matchup) =>
+            matchup.home.effectiveScore !== 0 ||
+            (matchup.away?.effectiveScore ?? 0) !== 0,
+        )
+        .map((matchup) => matchup.week),
+    );
+    const playedMatchups = matchups.filter((matchup) =>
+      playedWeeks.has(matchup.week),
+    );
+
+    const analytics = playedMatchups.flatMap((matchup) => {
       if (matchup.phase !== "regular" || matchup.away === null) {
         return [];
       }
@@ -157,7 +174,7 @@ export class SeasonStatsService {
       playoffTeamCount: snapshot.season.playoffTeamCount,
       regularSeasonStartWeek: snapshot.season.regularSeasonStartWeek,
       regularSeasonEndWeek: snapshot.season.regularSeasonEndWeek,
-      matchups,
+      matchups: playedMatchups,
       analytics,
     };
   }

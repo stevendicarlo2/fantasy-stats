@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import {
   buildAnalyticsChart,
   createDefaultAnalyticsFilters,
+  getLatestRecordedWeek,
   listAnalyticsFranchises,
   summarizeAnalytics,
   type AnalyticsFilters,
@@ -39,6 +40,10 @@ export function SeasonAnalyticsDashboard({
         regularSeasonEndWeek,
       ),
     [records, regularSeasonEndWeek, regularSeasonStartWeek],
+  );
+  const maximumWeek = useMemo(
+    () => getLatestRecordedWeek(records, regularSeasonStartWeek),
+    [records, regularSeasonStartWeek],
   );
   const [filters, setFilters] =
     useState<AnalyticsFilters>(defaultFilters);
@@ -104,8 +109,8 @@ export function SeasonAnalyticsDashboard({
         filters={filters}
         franchises={franchises}
         tableUsesFilters={tableMode === "filtered"}
-        regularSeasonStartWeek={regularSeasonStartWeek}
-        regularSeasonEndWeek={regularSeasonEndWeek}
+        minimumWeek={regularSeasonStartWeek}
+        maximumWeek={maximumWeek}
         defaultFilters={defaultFilters}
         setFilters={setFilters}
       />
