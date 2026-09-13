@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 
 import type { MatchupRosterPlayer, MatchupRosterTeam } from "@/domain/types";
 
@@ -98,46 +98,60 @@ function columnGroup(showProjected: boolean) {
   );
 }
 
-function scoreboardHead(
-  homeTeam: MatchupRosterTeam | undefined,
-  awayTeam: MatchupRosterTeam | undefined,
-  now: Date,
-  showProjected: boolean,
-) {
+function MatchupScoreboardHeader({
+  homeTeam,
+  awayTeam,
+  now,
+  showProjected,
+}: {
+  homeTeam: MatchupRosterTeam | undefined;
+  awayTeam: MatchupRosterTeam | undefined;
+  now: Date;
+  showProjected: boolean;
+}) {
   const fullSideSpan = showProjected ? 3 : 2;
   const outerSpan = showProjected ? 2 : 1;
 
   return (
-    <thead>
-      <tr className="matchup-team-names-row">
-        <th colSpan={fullSideSpan} className="team-name-cell home">
-          {teamLabel(homeTeam)}
-        </th>
-        <th className="position-cell" aria-hidden="true" />
-        <th colSpan={fullSideSpan} className="team-name-cell away">
-          {teamLabel(awayTeam)}
-        </th>
-      </tr>
-      <tr className="matchup-scoreline-row">
-        <th colSpan={outerSpan} className="team-summary-cell home">
-          {teamSummaryText(homeTeam, now)}
-        </th>
-        <th className="team-score-cell home">
-          <strong className="team-score">
-            {formatPoints(homeTeam?.effectiveScore ?? null)}
-          </strong>
-        </th>
-        <th className="position-cell" aria-hidden="true" />
-        <th className="team-score-cell away">
-          <strong className="team-score">
-            {formatPoints(awayTeam?.effectiveScore ?? null)}
-          </strong>
-        </th>
-        <th colSpan={outerSpan} className="team-summary-cell away">
-          {teamSummaryText(awayTeam, now)}
-        </th>
-      </tr>
-    </thead>
+    <div className="table-wrap matchup-scoreboard-header">
+      <table
+        className={`matchup-comparison-table${
+          showProjected ? " with-projected" : ""
+        }`}
+      >
+        {columnGroup(showProjected)}
+        <thead>
+          <tr className="matchup-team-names-row">
+            <th colSpan={fullSideSpan} className="team-name-cell home">
+              {teamLabel(homeTeam)}
+            </th>
+            <th className="position-cell" aria-hidden="true" />
+            <th colSpan={fullSideSpan} className="team-name-cell away">
+              {teamLabel(awayTeam)}
+            </th>
+          </tr>
+          <tr className="matchup-scoreline-row">
+            <th colSpan={outerSpan} className="team-summary-cell home">
+              {teamSummaryText(homeTeam, now)}
+            </th>
+            <th className="team-score-cell home">
+              <strong className="team-score">
+                {formatPoints(homeTeam?.effectiveScore ?? null)}
+              </strong>
+            </th>
+            <th className="position-cell" aria-hidden="true" />
+            <th className="team-score-cell away">
+              <strong className="team-score">
+                {formatPoints(awayTeam?.effectiveScore ?? null)}
+              </strong>
+            </th>
+            <th colSpan={outerSpan} className="team-summary-cell away">
+              {teamSummaryText(awayTeam, now)}
+            </th>
+          </tr>
+        </thead>
+      </table>
+    </div>
   );
 }
 
@@ -147,7 +161,6 @@ function comparisonSection(
   now: Date,
   showProjected: boolean,
   variant: "starters" | "reserve" = "starters",
-  head: ReactNode = null,
 ) {
   if (rows.length === 0) {
     return null;
@@ -166,7 +179,6 @@ function comparisonSection(
           }`}
         >
           {columnGroup(showProjected)}
-          {head}
           <tbody>
             {rows.map((row, index) => (
               <tr key={`${row.slotLabel}-${index}`}>
@@ -225,7 +237,6 @@ export function MatchupComparisonPanel({
 }: MatchupComparisonPanelProps) {
   const [showProjected, setShowProjected] = useState(false);
   const now = new Date(nowIso);
-  const head = scoreboardHead(homeTeam, awayTeam, now, showProjected);
 
   const sections: Array<{
     title: string;
@@ -240,9 +251,6 @@ export function MatchupComparisonPanel({
       variant: "reserve",
     },
   ];
-  const firstNonEmptyIndex = sections.findIndex(
-    (section) => section.rows.length > 0,
-  );
 
   return (
     <section className="panel matchup-comparison">
@@ -262,14 +270,19 @@ export function MatchupComparisonPanel({
           Show projected
         </button>
       </div>
-      {sections.map((section, index) =>
+      <MatchupScoreboardHeader
+        homeTeam={homeTeam}
+        awayTeam={awayTeam}
+        now={now}
+        showProjected={showProjected}
+      />
+      {sections.map((section) =>
         comparisonSection(
           section.title,
           section.rows,
           now,
           showProjected,
           section.variant,
-          index === firstNonEmptyIndex ? head : null,
         ),
       )}
     </section>

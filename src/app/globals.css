@@ -132,6 +132,11 @@ a {
   color: #baf1d3;
 }
 
+.matchup-scoreboard-header {
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid #26362f;
+}
+
 .matchup-team-names-row th {
   padding: 0.5rem 0.4rem 0.2rem;
   vertical-align: bottom;
