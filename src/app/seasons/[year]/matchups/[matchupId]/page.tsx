@@ -10,6 +10,15 @@ import type {
 } from "@/domain/types";
 import { getWebRuntime } from "@/server/runtime/web-runtime";
 
+import {
+  buildMatchupComparisonRows,
+  describeGameState,
+  formatGameStatusLine,
+  formatStatLine,
+  summarizeTeamPlay,
+  type MatchupComparisonRow,
+} from "./matchup-presentation";
+
 interface MatchupRosterPageProps {
   params: Promise<{ year: string; matchupId: string }>;
   searchParams: Promise<{ period?: string }>;
@@ -23,40 +32,116 @@ function teamLabel(team: MatchupRosterTeam) {
   return team.franchiseName ?? team.ownerName ?? "Unknown franchise";
 }
 
-function rosterSection(
+function playerPoints(
+  player: MatchupRosterPlayer | null,
+  now: Date,
+): number | null {
+  if (!player) {
+    return null;
+  }
+
+  const state = describeGameState(player.game, now);
+  return state === "scheduled" || state === "bye"
+    ? null
+    : player.actualFantasyPoints;
+}
+
+function playerCell(player: MatchupRosterPlayer | null, now: Date) {
+  if (!player) {
+    return <span className="player-cell-empty">--</span>;
+  }
+
+  const state = describeGameState(player.game, now);
+  const statusLine = formatGameStatusLine(player.game, state);
+  const statLine = formatStatLine(
+    player.position,
+    player.game?.stats ?? null,
+  );
+  const isLive = state === "in_progress";
+
+  return (
+    <div className={`player-info${isLive ? " live" : " muted"}`}>
+      <p className="player-name">
+        {player.displayName}
+        {player.nflTeamAbbreviation ? (
+          <span className="player-team"> {player.nflTeamAbbreviation}</span>
+        ) : null}
+      </p>
+      <p className="player-status">{statusLine}</p>
+      {statLine ? <p className="player-stat-line">{statLine}</p> : null}
+    </div>
+  );
+}
+
+function comparisonSection(
   title: string,
-  players: MatchupRosterPlayer[],
+  rows: MatchupComparisonRow[],
+  now: Date,
+  variant: "starters" | "reserve" = "starters",
 ) {
-  if (players.length === 0) {
+  if (rows.length === 0) {
     return null;
   }
 
   return (
-    <section className="roster-section">
+    <section className={`roster-section${variant === "reserve" ? " reserve" : ""}`}>
       <h3>{title}</h3>
       <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Slot</th>
-              <th>Player</th>
-              <th>Actual</th>
-              <th>Projected</th>
-            </tr>
-          </thead>
+        <table className="matchup-comparison-table">
           <tbody>
-            {players.map((player) => (
-              <tr key={`${player.playerId}-${player.lineupSlot}`}>
-                <td>{player.lineupSlot}</td>
-                <td>{player.displayName}</td>
-                <td>{formatPoints(player.actualFantasyPoints)}</td>
-                <td>{formatPoints(player.projectedFantasyPoints)}</td>
+            {rows.map((row, index) => (
+              <tr key={`${row.slotLabel}-${index}`}>
+                <td className="player-cell home">
+                  {playerCell(row.home, now)}
+                </td>
+                <td className="points-cell home">
+                  {formatPoints(playerPoints(row.home, now))}
+                </td>
+                <td className="position-cell">{row.slotLabel}</td>
+                <td className="points-cell away">
+                  {formatPoints(playerPoints(row.away, now))}
+                </td>
+                <td className="player-cell away">
+                  {playerCell(row.away, now)}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
     </section>
+  );
+}
+
+function teamSummaryHeader(
+  team: MatchupRosterTeam | undefined,
+  now: Date,
+) {
+  if (!team) {
+    return null;
+  }
+
+  const summary = summarizeTeamPlay(team.players, now);
+
+  return (
+    <div className="matchup-team-header">
+      <div>
+        <p className="panel-kicker">{team.matchupSide}</p>
+        <h2>{teamLabel(team)}</h2>
+      </div>
+      <div className="matchup-team-score">
+        <strong>{formatPoints(team.effectiveScore)}</strong>
+        <span>
+          In Play: {summary.inPlayCount} To Play: {summary.toPlayCount}{" "}
+          Proj Total: {summary.projectedTotal.toFixed(1)}
+        </span>
+      </div>
+      {team.rosterState === "provisional" ? (
+        <p className="provisional-note">
+          This lineup is provisional and may change on refresh.
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -126,98 +211,78 @@ export default async function MatchupRosterPage({
     matchup.periods.find(
       (period) => period.scoringPeriod === requestedPeriod,
     ) ?? matchup.periods[0];
+  const homeTeam = selectedPeriod?.teams.find(
+    (team) => team.matchupSide === "home",
+  );
+  const awayTeam = selectedPeriod?.teams.find(
+    (team) => team.matchupSide === "away",
+  );
+  const now = new Date();
+  const comparisonRows =
+    homeTeam || awayTeam
+      ? buildMatchupComparisonRows(
+          homeTeam?.players ?? [],
+          awayTeam?.players ?? [],
+        )
+      : null;
 
   return (
-      <main className="shell season-shell">
-        <Link className="back-link" href={`/seasons/${year}`}>
-          &larr; Season {year}
-        </Link>
-        <header className="hero compact season-hero matchup-roster-hero">
-          <div>
-            <p className="eyebrow">Matchup rosters</p>
-            <h1>
-              {year} period {matchup.matchupPeriod}
-            </h1>
-            <p className="summary">
-              Weekly lineup snapshots and fantasy points for this matchup.
-            </p>
+    <main className="shell season-shell">
+      <Link className="back-link" href={`/seasons/${year}`}>
+        &larr; Season {year}
+      </Link>
+      <header className="hero compact season-hero matchup-roster-hero">
+        <div>
+          <p className="eyebrow">Matchup rosters</p>
+          <h1>
+            {year} period {matchup.matchupPeriod}
+          </h1>
+          <p className="summary">
+            Weekly lineup snapshots and fantasy points for this matchup.
+          </p>
+        </div>
+        <span className={`phase ${matchup.phase}`}>{matchup.phase}</span>
+      </header>
+
+      {matchup.periods.length > 1 ? (
+        <nav className="period-tabs" aria-label="Scoring period">
+          {matchup.periods.map((period) => (
+            <Link
+              className={
+                period.scoringPeriod === selectedPeriod?.scoringPeriod
+                  ? "selected"
+                  : undefined
+              }
+              href={`?period=${period.scoringPeriod}`}
+              key={period.scoringPeriod}
+            >
+              Week {period.scoringPeriod}
+            </Link>
+          ))}
+        </nav>
+      ) : null}
+
+      {!selectedPeriod || !comparisonRows ? (
+        <section className="panel">
+          <h2>Roster data unavailable</h2>
+          <p>No weekly roster snapshot has been imported for this matchup.</p>
+        </section>
+      ) : (
+        <section className="panel matchup-comparison">
+          <div className="matchup-comparison-teams">
+            {teamSummaryHeader(homeTeam, now)}
+            {teamSummaryHeader(awayTeam, now)}
           </div>
-          {selectedPeriod && selectedPeriod.teams.length > 0 ? (
-            <div className="matchup-scoreboard">
-              {selectedPeriod.teams.map((team) => (
-                <div key={team.franchiseId}>
-                  <span>{teamLabel(team)}</span>
-                  <strong>{formatPoints(team.effectiveScore)}</strong>
-                </div>
-              ))}
-            </div>
-          ) : null}
-          <span className={`phase ${matchup.phase}`}>{matchup.phase}</span>
-        </header>
-
-        {matchup.periods.length > 1 ? (
-          <nav className="period-tabs" aria-label="Scoring period">
-            {matchup.periods.map((period) => (
-              <Link
-                className={
-                  period.scoringPeriod === selectedPeriod?.scoringPeriod
-                    ? "selected"
-                    : undefined
-                }
-                href={`?period=${period.scoringPeriod}`}
-                key={period.scoringPeriod}
-              >
-                Week {period.scoringPeriod}
-              </Link>
-            ))}
-          </nav>
-        ) : null}
-
-        {!selectedPeriod || selectedPeriod.teams.length === 0 ? (
-          <section className="panel">
-            <h2>Roster data unavailable</h2>
-            <p>No weekly roster snapshot has been imported for this matchup.</p>
-          </section>
-        ) : (
-          <section className="roster-grid">
-            {selectedPeriod.teams.map((team) => {
-              const starters = team.players.filter(
-                (player) =>
-                  player.lineupSlot !== "BE" &&
-                  player.lineupSlot !== "IR",
-              );
-              const bench = team.players.filter(
-                (player) => player.lineupSlot === "BE",
-              );
-              const injuredReserve = team.players.filter(
-                (player) => player.lineupSlot === "IR",
-              );
-
-              return (
-                <article className="panel roster-team" key={team.franchiseId}>
-                  <header>
-                    <div>
-                      <p className="panel-kicker">{team.matchupSide}</p>
-                      <h2>{teamLabel(team)}</h2>
-                    </div>
-                    <div className="roster-score">
-                      <span>Team score</span>
-                      <strong>{formatPoints(team.effectiveScore)}</strong>
-                    </div>
-                  </header>
-                  {team.rosterState === "provisional" ? (
-                    <p className="provisional-note">
-                      This lineup is provisional and may change on refresh.
-                    </p>
-                  ) : null}
-                  {rosterSection("Starters", starters)}
-                  {rosterSection("Bench", bench)}
-                  {rosterSection("Injured reserve", injuredReserve)}
-                </article>
-              );
-            })}
-          </section>
-        )}
-      </main>
+          {comparisonSection("Starters", comparisonRows.starters, now)}
+          {comparisonSection("Bench", comparisonRows.bench, now, "reserve")}
+          {comparisonSection(
+            "Injured reserve",
+            comparisonRows.injuredReserve,
+            now,
+            "reserve",
+          )}
+        </section>
+      )}
+    </main>
   );
 }

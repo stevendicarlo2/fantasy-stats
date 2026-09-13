@@ -15,7 +15,9 @@ import type {
   ImportDataset,
   MatchupRosterDetail,
   MatchupRosterPlayer,
+  MatchupRosterPlayerGame,
   MatchupRosterTeam,
+  PlayerBoxScoreStats,
   RelevantPlayer,
   SeasonDatasetStatus,
   SourceMapping,
@@ -47,6 +49,10 @@ const rosterTeamRowSchema = z.object({
   rosterState: z.enum(["provisional", "final"]),
 });
 
+const jsonNumberArrayColumn = z
+  .string()
+  .transform((value) => JSON.parse(value) as number[]);
+
 const rosterPlayerRowSchema = z.object({
   scoringPeriod: z.number().int().positive(),
   franchiseId: z.uuid(),
@@ -68,6 +74,33 @@ const rosterPlayerRowSchema = z.object({
   rosterOrder: z.number().int().nonnegative(),
   actualFantasyPoints: z.number(),
   projectedFantasyPoints: z.number().nullable(),
+  position: z.enum(["QB", "RB", "WR", "TE", "K", "DST"]).nullable(),
+  nflTeamAbbreviation: z.string().trim().min(1).nullable(),
+  gameStartsAt: z.string().nullable(),
+  gameCompleted: z.number().int().nullable(),
+  opponentAbbreviation: z.string().trim().min(1).nullable(),
+  isHomeGame: z.number().int().nullable(),
+  passingAttempts: z.number().int().nullable(),
+  passingCompletions: z.number().int().nullable(),
+  passingYards: z.number().int().nullable(),
+  passingTouchdowns: z.number().int().nullable(),
+  passingInterceptions: z.number().int().nullable(),
+  rushingAttempts: z.number().int().nullable(),
+  rushingYards: z.number().int().nullable(),
+  rushingTouchdowns: z.number().int().nullable(),
+  receptions: z.number().int().nullable(),
+  receivingTargets: z.number().int().nullable(),
+  receivingYards: z.number().int().nullable(),
+  receivingTouchdowns: z.number().int().nullable(),
+  fumbles: z.number().int().nullable(),
+  fumblesLost: z.number().int().nullable(),
+  passingTwoPointConversions: z.number().int().nullable(),
+  rushingTwoPointConversions: z.number().int().nullable(),
+  receivingTwoPointConversions: z.number().int().nullable(),
+  extraPointsMade: z.number().int().nullable(),
+  extraPointsMissed: z.number().int().nullable(),
+  madeFieldGoalDistances: jsonNumberArrayColumn.nullable(),
+  missedFieldGoalDistances: jsonNumberArrayColumn.nullable(),
 });
 
 const datasetStatusRowSchema = z.object({
@@ -565,6 +598,50 @@ export async function listSeasonDatasetStatuses(
   );
 }
 
+function buildRosterPlayerGame(
+  row: z.infer<typeof rosterPlayerRowSchema>,
+): MatchupRosterPlayerGame | null {
+  if (row.gameStartsAt === null || row.opponentAbbreviation === null) {
+    return null;
+  }
+
+  const stats: PlayerBoxScoreStats | null =
+    row.passingAttempts === null
+      ? null
+      : {
+          passingAttempts: row.passingAttempts,
+          passingCompletions: row.passingCompletions ?? 0,
+          passingYards: row.passingYards ?? 0,
+          passingTouchdowns: row.passingTouchdowns ?? 0,
+          passingInterceptions: row.passingInterceptions ?? 0,
+          rushingAttempts: row.rushingAttempts ?? 0,
+          rushingYards: row.rushingYards ?? 0,
+          rushingTouchdowns: row.rushingTouchdowns ?? 0,
+          receptions: row.receptions ?? 0,
+          receivingTargets: row.receivingTargets ?? 0,
+          receivingYards: row.receivingYards ?? 0,
+          receivingTouchdowns: row.receivingTouchdowns ?? 0,
+          fumbles: row.fumbles ?? 0,
+          fumblesLost: row.fumblesLost ?? 0,
+          passingTwoPointConversions: row.passingTwoPointConversions ?? 0,
+          rushingTwoPointConversions: row.rushingTwoPointConversions ?? 0,
+          receivingTwoPointConversions:
+            row.receivingTwoPointConversions ?? 0,
+          extraPointsMade: row.extraPointsMade ?? 0,
+          extraPointsMissed: row.extraPointsMissed ?? 0,
+          madeFieldGoalDistances: row.madeFieldGoalDistances ?? [],
+          missedFieldGoalDistances: row.missedFieldGoalDistances ?? [],
+        };
+
+  return {
+    opponentAbbreviation: row.opponentAbbreviation,
+    isHomeGame: row.isHomeGame === 1,
+    startsAt: row.gameStartsAt,
+    completed: row.gameCompleted === 1,
+    stats,
+  };
+}
+
 export async function getMatchupRosterDetail(
   client: Client,
   seasonYear: number,
@@ -682,7 +759,43 @@ export async function getMatchupRosterDetail(
         weekly_roster_entries.roster_order AS rosterOrder,
         weekly_roster_entries.actual_fantasy_points AS actualFantasyPoints,
         weekly_roster_entries.projected_fantasy_points
-          AS projectedFantasyPoints
+          AS projectedFantasyPoints,
+        position_ranges.position AS position,
+        player_team.abbreviation AS nflTeamAbbreviation,
+        games.starts_at AS gameStartsAt,
+        games.completed AS gameCompleted,
+        CASE
+          WHEN games.home_nfl_team_id = team_ranges.nfl_team_id
+            THEN away_team.abbreviation
+          ELSE home_team.abbreviation
+        END AS opponentAbbreviation,
+        CASE
+          WHEN games.home_nfl_team_id = team_ranges.nfl_team_id
+            THEN 1
+          ELSE 0
+        END AS isHomeGame,
+        stats.passing_attempts AS passingAttempts,
+        stats.passing_completions AS passingCompletions,
+        stats.passing_yards AS passingYards,
+        stats.passing_touchdowns AS passingTouchdowns,
+        stats.passing_interceptions AS passingInterceptions,
+        stats.rushing_attempts AS rushingAttempts,
+        stats.rushing_yards AS rushingYards,
+        stats.rushing_touchdowns AS rushingTouchdowns,
+        stats.receptions AS receptions,
+        stats.receiving_targets AS receivingTargets,
+        stats.receiving_yards AS receivingYards,
+        stats.receiving_touchdowns AS receivingTouchdowns,
+        stats.fumbles AS fumbles,
+        stats.fumbles_lost AS fumblesLost,
+        stats.passing_two_point_conversions AS passingTwoPointConversions,
+        stats.rushing_two_point_conversions AS rushingTwoPointConversions,
+        stats.receiving_two_point_conversions
+          AS receivingTwoPointConversions,
+        stats.extra_points_made AS extraPointsMade,
+        stats.extra_points_missed AS extraPointsMissed,
+        stats.made_field_goal_distances AS madeFieldGoalDistances,
+        stats.missed_field_goal_distances AS missedFieldGoalDistances
       FROM weekly_roster_entries
       INNER JOIN players ON players.id = weekly_roster_entries.player_id
       INNER JOIN matchups
@@ -704,6 +817,34 @@ export async function getMatchupRosterDetail(
           matchups.away_franchise_id
         )
       INNER JOIN seasons ON seasons.id = matchups.season_id
+      LEFT JOIN player_position_ranges AS position_ranges
+        ON position_ranges.player_id = players.id
+        AND position_ranges.season_id = weekly_roster_entries.season_id
+        AND weekly_roster_entries.scoring_period
+          BETWEEN position_ranges.start_scoring_period
+          AND position_ranges.end_scoring_period
+      LEFT JOIN player_nfl_team_ranges AS team_ranges
+        ON team_ranges.player_id = players.id
+        AND team_ranges.season_id = weekly_roster_entries.season_id
+        AND weekly_roster_entries.scoring_period
+          BETWEEN team_ranges.start_scoring_period
+          AND team_ranges.end_scoring_period
+      LEFT JOIN nfl_teams AS player_team
+        ON player_team.id = team_ranges.nfl_team_id
+      LEFT JOIN nfl_games AS games
+        ON games.season_year = seasons.year
+        AND games.week = weekly_roster_entries.scoring_period
+        AND (
+          games.home_nfl_team_id = team_ranges.nfl_team_id
+          OR games.away_nfl_team_id = team_ranges.nfl_team_id
+        )
+      LEFT JOIN nfl_teams AS home_team
+        ON home_team.id = games.home_nfl_team_id
+      LEFT JOIN nfl_teams AS away_team
+        ON away_team.id = games.away_nfl_team_id
+      LEFT JOIN player_game_stats AS stats
+        ON stats.player_id = players.id
+        AND stats.nfl_game_id = games.id
       WHERE seasons.year = ? AND matchups.id = ?
       ORDER BY
         weekly_roster_entries.scoring_period,
@@ -759,6 +900,9 @@ export async function getMatchupRosterDetail(
                   actualFantasyPoints: player.actualFantasyPoints,
                   projectedFantasyPoints:
                     player.projectedFantasyPoints,
+                  position: player.position,
+                  nflTeamAbbreviation: player.nflTeamAbbreviation,
+                  game: buildRosterPlayerGame(player),
                 }),
               ),
           }),

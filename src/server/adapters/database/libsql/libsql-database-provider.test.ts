@@ -497,6 +497,21 @@ describe("libSQL database provider", () => {
                   expect.objectContaining({
                     playerId: ids.player,
                     projectedFantasyPoints: 18.25,
+                    position: "QB",
+                    nflTeamAbbreviation: "SYN",
+                    game: expect.objectContaining({
+                      opponentAbbreviation: "AWY",
+                      isHomeGame: true,
+                      startsAt: "2025-09-07T17:00:00Z",
+                      completed: true,
+                      stats: expect.objectContaining({
+                        passingYards: 250,
+                        passingTouchdowns: 2,
+                        passingInterceptions: 1,
+                        madeFieldGoalDistances: [42],
+                        missedFieldGoalDistances: [51],
+                      }),
+                    }),
                   }),
                 ],
               },
@@ -506,6 +521,9 @@ describe("libSQL database provider", () => {
                   expect.objectContaining({
                     playerId: ids.defense,
                     projectedFantasyPoints: null,
+                    position: "DST",
+                    nflTeamAbbreviation: null,
+                    game: null,
                   }),
                 ],
               },

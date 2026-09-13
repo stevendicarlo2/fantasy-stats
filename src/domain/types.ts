@@ -330,6 +330,19 @@ export interface SeasonDatasetStatus {
   message: string | null;
 }
 
+export type PlayerBoxScoreStats = Omit<
+  PlayerGameStats,
+  "playerId" | "nflGameId" | "nflTeamId"
+>;
+
+export interface MatchupRosterPlayerGame {
+  opponentAbbreviation: string;
+  isHomeGame: boolean;
+  startsAt: IsoDateTime;
+  completed: boolean;
+  stats: PlayerBoxScoreStats | null;
+}
+
 export interface MatchupRosterPlayer {
   playerId: CanonicalId;
   playerKind: PlayerKind;
@@ -338,6 +351,10 @@ export interface MatchupRosterPlayer {
   rosterOrder: number;
   actualFantasyPoints: number;
   projectedFantasyPoints: number | null;
+  position: PlayerPosition | null;
+  nflTeamAbbreviation: string | null;
+  /** Null when the player's NFL team has a bye in this scoring period. */
+  game: MatchupRosterPlayerGame | null;
 }
 
 export interface MatchupRosterTeam {
