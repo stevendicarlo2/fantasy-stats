@@ -134,11 +134,31 @@ a {
 
 .matchup-scoreboard-header {
   margin-bottom: 0.5rem;
-  border-bottom: 1px solid #26362f;
+}
+
+.matchup-scoreboard-header .matchup-comparison-table {
+  position: relative;
+}
+
+.matchup-scoreboard-header .matchup-comparison-table::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: #26362f;
+  pointer-events: none;
+}
+
+.matchup-scoreboard-header th {
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .matchup-team-names-row th {
   padding: 0.5rem 0.4rem 0.2rem;
+  border-bottom: none;
   vertical-align: bottom;
 }
 
@@ -146,11 +166,6 @@ a {
   padding: 0.1rem 0.4rem 0.5rem;
   border-bottom: 1px solid #26362f;
   vertical-align: bottom;
-}
-
-.matchup-team-names-row .position-cell,
-.matchup-scoreline-row .position-cell {
-  border-left: 1px solid #26362f;
 }
 
 .team-name-cell {
@@ -167,6 +182,7 @@ a {
 .team-summary-cell {
   color: #91a99e;
   font-size: 0.72rem;
+  font-weight: 400;
   text-align: left;
 }
 
