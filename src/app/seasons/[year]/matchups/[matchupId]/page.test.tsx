@@ -146,7 +146,6 @@ describe("MatchupRosterPage", () => {
     expect(view.getByText("Week 16")).toBeTruthy();
     expect(view.getByText("Home Team")).toBeTruthy();
     expect(view.getByText("Away Team")).toBeTruthy();
-    expect(view.getByText("Actual")).toBeTruthy();
     expect(view.getByText("Show projected")).toBeTruthy();
     expect(view.getByText("Home Starter")).toBeTruthy();
     expect(view.getByText("Away Starter")).toBeTruthy();
@@ -266,8 +265,9 @@ describe("MatchupRosterPage", () => {
     // The headline score is unaffected by the toggle (stays actual).
     expect(view.getByText("125.50")).toBeTruthy();
 
-    // Toggling back removes the projected column again.
-    fireEvent.click(view.getByText("Actual"));
+    // Toggling back (clicking the same button again) removes the
+    // projected column.
+    fireEvent.click(view.getByText("Show projected"));
     expect(view.queryByText("15.00")).toBeNull();
   });
 

@@ -76,24 +76,24 @@ function columnGroup(showProjected: boolean) {
   if (showProjected) {
     return (
       <colgroup>
-        <col style={{ width: "30%" }} />
+        <col style={{ width: "28%" }} />
         <col style={{ width: "8%" }} />
-        <col style={{ width: "9%" }} />
+        <col style={{ width: "11%" }} />
         <col style={{ width: "6%" }} />
-        <col style={{ width: "9%" }} />
+        <col style={{ width: "11%" }} />
         <col style={{ width: "8%" }} />
-        <col style={{ width: "30%" }} />
+        <col style={{ width: "28%" }} />
       </colgroup>
     );
   }
 
   return (
     <colgroup>
-      <col style={{ width: "34%" }} />
-      <col style={{ width: "12%" }} />
+      <col style={{ width: "31%" }} />
+      <col style={{ width: "15%" }} />
       <col style={{ width: "8%" }} />
-      <col style={{ width: "12%" }} />
-      <col style={{ width: "34%" }} />
+      <col style={{ width: "15%" }} />
+      <col style={{ width: "31%" }} />
     </colgroup>
   );
 }
@@ -254,18 +254,12 @@ export function MatchupComparisonPanel({
 
   return (
     <section className="panel matchup-comparison">
-      <div className="points-toggle" aria-label="Points display">
-        <button
-          type="button"
-          className={showProjected ? undefined : "selected"}
-          onClick={() => setShowProjected(false)}
-        >
-          Actual
-        </button>
+      <div className="points-toggle">
         <button
           type="button"
           className={showProjected ? "selected" : undefined}
-          onClick={() => setShowProjected(true)}
+          aria-pressed={showProjected}
+          onClick={() => setShowProjected((current) => !current)}
         >
           Show projected
         </button>
