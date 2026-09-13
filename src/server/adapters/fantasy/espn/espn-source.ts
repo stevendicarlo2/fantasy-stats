@@ -66,6 +66,10 @@ const espnTeamSchema = z.object({
 const espnMatchupSideSchema = z.object({
   teamId: z.int(),
   totalPoints: z.number(),
+  // Present only while the matchup is in progress; ESPN reports 0 for
+  // `totalPoints` until the scoring period is final, holding the running
+  // live score here instead.
+  totalPointsLive: z.number().optional(),
 });
 
 const espnMatchupSchema = z.object({
@@ -308,6 +312,15 @@ class CanonicalIdentityRegistry {
   private key(entityType: SourceEntityType, externalId: string) {
     return `${entityType}\u0000${externalId}`;
   }
+}
+
+// ESPN reports `totalPoints` as 0 until a scoring period is final, holding
+// the running score in `totalPointsLive` while the matchup is in progress.
+function roundMatchupSideScore(side: {
+  totalPoints: number;
+  totalPointsLive?: number;
+}) {
+  return Math.round((side.totalPointsLive ?? side.totalPoints) * 100) / 100;
 }
 
 function buildEspnUrl(leagueId: number, year: number) {
@@ -687,7 +700,7 @@ function mapLeagueToSnapshot(
       {
         matchupId,
         franchiseId: homeFranchiseId,
-        score: Math.round(matchup.home.totalPoints * 100) / 100,
+        score: roundMatchupSideScore(matchup.home),
       },
     ];
 
@@ -695,7 +708,7 @@ function mapLeagueToSnapshot(
       matchupScores.push({
         matchupId,
         franchiseId: franchiseIdByTeam.get(matchup.away.teamId)!,
-        score: Math.round(matchup.away.totalPoints * 100) / 100,
+        score: roundMatchupSideScore(matchup.away),
       });
     }
 
