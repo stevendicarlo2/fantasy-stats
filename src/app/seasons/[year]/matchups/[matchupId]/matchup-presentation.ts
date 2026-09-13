@@ -212,6 +212,20 @@ export function summarizeTeamPlay(
   return { inPlayCount, toPlayCount, projectedTotal };
 }
 
+/**
+ * Sums a team's pregame projected fantasy points across its starting
+ * lineup, for the "Projected" points-mode toggle. Unlike
+ * `summarizeTeamPlay`'s running projected total, this ignores actual
+ * results entirely and always uses the pregame projection snapshot.
+ */
+export function sumProjectedStarterPoints(
+  players: MatchupRosterPlayer[],
+): number {
+  return players
+    .filter((player) => STARTER_SLOTS.includes(player.lineupSlot))
+    .reduce((total, player) => total + (player.projectedFantasyPoints ?? 0), 0);
+}
+
 export interface MatchupComparisonRow {
   slotLabel: LineupSlot;
   home: MatchupRosterPlayer | null;

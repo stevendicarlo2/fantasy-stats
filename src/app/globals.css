@@ -106,64 +106,91 @@ a {
   margin-top: 0.5rem;
 }
 
-.roster-section h3 {
-  margin: 0 0 0.25rem;
-  font-size: 0.95rem;
-}
-
 .roster-section.reserve {
   opacity: 0.6;
 }
 
-.matchup-comparison-teams {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
+.points-toggle {
+  display: flex;
+  gap: 0.4rem;
   margin-bottom: 0.5rem;
 }
 
-.matchup-team-header {
-  display: grid;
-  gap: 0.1rem;
+.points-toggle button {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid #315245;
+  border-radius: 999px;
+  background: transparent;
+  color: #a8bdb3;
+  font-size: 0.72rem;
+  cursor: pointer;
 }
 
-.matchup-team-header h2 {
-  margin: 0;
-  font-size: 1.1rem;
+.points-toggle button.selected {
+  border-color: #72d9a5;
+  background: rgb(45 125 86 / 28%);
+  color: #baf1d3;
 }
 
-.matchup-team-score {
-  display: grid;
-  gap: 0.05rem;
+.matchup-team-names-row th {
+  padding: 0.5rem 0.4rem 0.2rem;
+  vertical-align: bottom;
 }
 
-.matchup-team-score strong {
-  font-size: 1.2rem;
+.matchup-scoreline-row th {
+  padding: 0.1rem 0.4rem 0.5rem;
+  border-bottom: 1px solid #26362f;
+  vertical-align: bottom;
 }
 
-.matchup-team-score span {
+.matchup-team-names-row .position-cell,
+.matchup-scoreline-row .position-cell {
+  border-left: 1px solid #26362f;
+}
+
+.team-name-cell {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #e7f3ec;
+  text-align: left;
+}
+
+.team-name-cell.away {
+  text-align: right;
+}
+
+.team-summary-cell {
   color: #91a99e;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
+  text-align: left;
 }
 
-.provisional-note {
-  margin: 0;
-  color: #f1cf83;
-  font-size: 0.68rem;
+.team-summary-cell.away {
+  text-align: right;
+}
+
+.team-score-cell {
+  text-align: center;
+}
+
+.team-score {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.2;
 }
 
 .matchup-comparison-table {
   table-layout: fixed;
+  width: 100%;
+  max-width: 42rem;
+  margin: 0 auto;
 }
 
 .matchup-comparison-table td {
   padding-top: 0.3rem;
   padding-bottom: 0.3rem;
   vertical-align: middle;
-}
-
-.matchup-comparison-table .player-cell {
-  width: 38%;
 }
 
 .matchup-comparison-table .player-cell.away .player-info,
@@ -173,7 +200,6 @@ a {
 }
 
 .matchup-comparison-table .position-cell {
-  width: 8%;
   padding: 0.3rem 0.4rem;
   color: #8eaa9d;
   font-size: 0.68rem;
@@ -183,8 +209,15 @@ a {
   text-transform: uppercase;
 }
 
+.matchup-comparison-table .projected-cell {
+  color: #b9c8c0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: center;
+  opacity: 0.55;
+}
+
 .matchup-comparison-table .points-cell {
-  width: 8%;
   font-size: 0.95rem;
   font-weight: 700;
   text-align: center;
@@ -210,6 +243,9 @@ a {
   margin: 0;
   font-size: 0.85rem;
   font-weight: 700;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .player-team {
@@ -221,6 +257,9 @@ a {
   margin: 0;
   color: #91a99e;
   font-size: 0.7rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .player-info.live .player-status {
@@ -232,6 +271,9 @@ a {
   margin: 0;
   color: #b9c8c0;
   font-size: 0.68rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .player-cell-empty {
@@ -247,8 +289,9 @@ a {
     align-items: start;
   }
 
-  .matchup-comparison-teams {
-    grid-template-columns: 1fr;
+  .team-name-cell.away,
+  .team-summary-cell.away {
+    text-align: left;
   }
 
   .matchup-comparison-table .player-cell.away .player-info,

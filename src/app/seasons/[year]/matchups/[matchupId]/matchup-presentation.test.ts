@@ -13,6 +13,7 @@ import {
   formatKickoffEastern,
   formatStatLine,
   summarizeTeamPlay,
+  sumProjectedStarterPoints,
 } from "./matchup-presentation";
 
 const NOW = new Date("2026-09-14T20:00:00Z");
@@ -236,6 +237,45 @@ describe("summarizeTeamPlay", () => {
       toPlayCount: 0,
       projectedTotal: 0,
     });
+  });
+});
+
+describe("sumProjectedStarterPoints", () => {
+  it("sums pregame projections across starters regardless of game state", () => {
+    const players = [
+      buildPlayer({
+        lineupSlot: "QB",
+        actualFantasyPoints: 21.1,
+        projectedFantasyPoints: 18,
+        game: buildGame({ completed: true }),
+      }),
+      buildPlayer({
+        lineupSlot: "RB",
+        actualFantasyPoints: 0,
+        projectedFantasyPoints: 12,
+        game: buildGame({ startsAt: "2026-09-21T17:00:00Z" }),
+      }),
+      buildPlayer({
+        lineupSlot: "BE",
+        actualFantasyPoints: 30,
+        projectedFantasyPoints: 30,
+        game: buildGame({ completed: true }),
+      }),
+    ];
+
+    expect(sumProjectedStarterPoints(players)).toBe(30);
+  });
+
+  it("treats a null projection as zero", () => {
+    const players = [
+      buildPlayer({
+        lineupSlot: "QB",
+        projectedFantasyPoints: null,
+        game: null,
+      }),
+    ];
+
+    expect(sumProjectedStarterPoints(players)).toBe(0);
   });
 });
 
