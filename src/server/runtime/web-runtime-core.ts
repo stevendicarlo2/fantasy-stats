@@ -112,7 +112,9 @@ export async function createWebRuntime(
   return {
     storage,
     earliestSeason: espnEnvironment.ESPN_EARLIEST_SEASON,
-    latestSeason: new Date().getFullYear() - 1,
+    // NFL seasons start in September, so the current calendar year's season
+    // is already importable well before the year ends.
+    latestSeason: new Date().getFullYear(),
     importService,
     seasonDataImportService: new SeasonDataImportService(
       importService,
