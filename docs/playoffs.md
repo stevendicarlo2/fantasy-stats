@@ -37,3 +37,24 @@ The application must therefore:
 Playoff and consolation scores remain queryable, but they do not contribute to
 regular-season qualification standings. A postseason bye has no head-to-head
 opponent, bonus, or ANP result.
+
+## Postseason phases
+
+`matchups.phase` distinguishes four postseason states, mirroring ESPN's own
+bracket tiers:
+
+- `playoff` — still contesting the championship bracket (ESPN's
+  `WINNERS_BRACKET`).
+- `playoff_eliminated` — already eliminated from the championship bracket and
+  playing placement games (ESPN's `WINNERS_CONSOLATION_LADDER`).
+- `consolation` — never qualified for the championship bracket at all (ESPN's
+  `LOSERS_CONSOLATION_LADDER`).
+- `consolation_eliminated` — lost a `consolation`-phase matchup earlier in the
+  season. ESPN does not expose a further sub-tier for the consolation bracket,
+  so the application derives this itself: the loss that causes elimination
+  keeps the `consolation` phase, and later matchups involving that franchise
+  are reclassified as `consolation_eliminated`.
+
+These phases are informational, not exhaustive filters: eliminated teams keep
+playing every remaining postseason week, and their scores stay in the
+database and remain queryable via the eliminated phase values when needed.

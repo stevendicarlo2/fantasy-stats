@@ -32,7 +32,13 @@ const matchupRowSchema = z.object({
   matchupId: z.uuid(),
   seasonYear: z.number().int(),
   matchupPeriod: z.number().int().positive(),
-  phase: z.enum(["regular", "playoff", "consolation"]),
+  phase: z.enum([
+    "regular",
+    "playoff",
+    "playoff_eliminated",
+    "consolation",
+    "consolation_eliminated",
+  ]),
 });
 
 const scoringPeriodRowSchema = z.object({

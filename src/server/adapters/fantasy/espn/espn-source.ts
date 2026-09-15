@@ -594,16 +594,71 @@ function classifyPostseasonMatchup(
     return "playoff";
   }
 
-  if (
-    matchup.playoffTierType === "WINNERS_CONSOLATION_LADDER" ||
-    matchup.playoffTierType === "LOSERS_CONSOLATION_LADDER"
-  ) {
+  // Teams already eliminated from the championship bracket play placement
+  // games against each other; ESPN still calls this a "consolation ladder",
+  // but it is distinct from the true consolation bracket (teams that never
+  // qualified for the playoffs at all).
+  if (matchup.playoffTierType === "WINNERS_CONSOLATION_LADDER") {
+    return "playoff_eliminated";
+  }
+
+  if (matchup.playoffTierType === "LOSERS_CONSOLATION_LADDER") {
     return "consolation";
   }
 
   throw new EspnMappingError(
     `ESPN postseason matchup ${matchup.id} has no recognized bracket tier`,
   );
+}
+
+// ESPN does not expose a further sub-tier for teams that have already lost
+// within the true consolation bracket, so we derive it ourselves: once a
+// franchise loses a "consolation" matchup, every later "consolation" matchup
+// involving that franchise is reclassified as "consolation_eliminated". The
+// loss itself stays "consolation" (mirroring how ESPN keeps a playoff loss
+// tagged "playoff" and only reclassifies the following week's games).
+function applyConsolationEliminationPhases(
+  matchups: {
+    week: number;
+    phase: MatchupPhase;
+    homeFranchiseId: CanonicalId;
+    awayFranchiseId: CanonicalId | null | undefined;
+  }[],
+  scheduleByMatchupIndex: EspnMatchup[],
+): void {
+  const eliminatedFranchises = new Set<CanonicalId>();
+  const order = matchups
+    .map((matchup, index) => ({ matchup, index }))
+    .filter(({ matchup }) => matchup.phase === "consolation")
+    .sort((a, b) => a.matchup.week - b.matchup.week);
+
+  for (const { matchup, index } of order) {
+    if (
+      eliminatedFranchises.has(matchup.homeFranchiseId) ||
+      (matchup.awayFranchiseId != null &&
+        eliminatedFranchises.has(matchup.awayFranchiseId))
+    ) {
+      matchup.phase = "consolation_eliminated";
+    }
+
+    const scheduleMatchup = scheduleByMatchupIndex[index];
+    if (!scheduleMatchup.away || matchup.awayFranchiseId == null) {
+      // Byes have no loser to mark as eliminated.
+      continue;
+    }
+
+    const homeScore = roundMatchupSideScore(scheduleMatchup.home);
+    const awayScore = roundMatchupSideScore(scheduleMatchup.away);
+    if (homeScore === awayScore) {
+      continue;
+    }
+
+    const loserFranchiseId =
+      homeScore > awayScore
+        ? matchup.awayFranchiseId
+        : matchup.homeFranchiseId;
+    eliminatedFranchises.add(loserFranchiseId);
+  }
 }
 
 function mapLeagueToSnapshot(
@@ -687,6 +742,7 @@ function mapLeagueToSnapshot(
       awayFranchiseId,
     };
   });
+  applyConsolationEliminationPhases(matchups, league.schedule);
   const matchupIdByProviderId = new Map(
     league.schedule.map((matchup, index) => [
       matchup.id,

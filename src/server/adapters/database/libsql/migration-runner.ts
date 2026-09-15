@@ -134,6 +134,14 @@ async function applyMigrations(
     return [];
   }
 
+  // Foreign key enforcement must be toggled outside any transaction (SQLite
+  // treats the pragma as a no-op once a transaction is open) and disabled
+  // while migrations run. Otherwise a migration that rebuilds a table (the
+  // only way to change a CHECK constraint in SQLite) triggers an implicit
+  // cascading DELETE on every dependent table's ON DELETE CASCADE rows the
+  // moment the old table is dropped, silently destroying their data.
+  await client.execute("PRAGMA foreign_keys = OFF");
+
   const transaction = await client.transaction("write");
 
   try {
@@ -159,6 +167,7 @@ async function applyMigrations(
     throw error;
   } finally {
     transaction.close();
+    await client.execute("PRAGMA foreign_keys = ON");
   }
 }
 

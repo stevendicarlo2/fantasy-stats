@@ -257,9 +257,26 @@ describe("EspnFantasySource", () => {
     expect(snapshot.matchups).toHaveLength(1);
   });
 
-  it("maps postseason playoff and consolation byes", async () => {
+  it("maps postseason playoff, consolation, and playoff-eliminated byes", async () => {
     const payload = createLeaguePayload(2025);
+    payload.teams.push(
+      {
+        id: 3,
+        name: "Synthetic Team Three",
+      } as unknown as (typeof payload.teams)[number],
+      {
+        id: 4,
+        name: "Synthetic Team Four",
+      } as unknown as (typeof payload.teams)[number],
+    );
+    payload.settings.size = 4;
     payload.schedule.push(
+      {
+        id: 6,
+        matchupPeriodId: 1,
+        home: { teamId: 3, totalPoints: 70 },
+        away: { teamId: 4, totalPoints: 65 },
+      } as unknown as (typeof payload.schedule)[number],
       {
         id: 2,
         matchupPeriodId: 2,
@@ -271,6 +288,18 @@ describe("EspnFantasySource", () => {
         matchupPeriodId: 2,
         playoffTierType: "LOSERS_CONSOLATION_LADDER" as const,
         home: { teamId: 2, totalPoints: 80 },
+      } as unknown as (typeof payload.schedule)[number],
+      {
+        id: 4,
+        matchupPeriodId: 2,
+        playoffTierType: "WINNERS_CONSOLATION_LADDER" as const,
+        home: { teamId: 3, totalPoints: 90 },
+      } as unknown as (typeof payload.schedule)[number],
+      {
+        id: 5,
+        matchupPeriodId: 2,
+        playoffTierType: "LOSERS_CONSOLATION_LADDER" as const,
+        home: { teamId: 4, totalPoints: 40 },
       } as unknown as (typeof payload.schedule)[number],
     );
     const source = createSource(payload);
@@ -286,6 +315,8 @@ describe("EspnFantasySource", () => {
     expect(postseason.map((matchup) => matchup.phase)).toEqual([
       "playoff",
       "consolation",
+      "playoff_eliminated",
+      "consolation",
     ]);
     expect(
       postseason.every((matchup) => matchup.awayFranchiseId === null),
@@ -294,7 +325,85 @@ describe("EspnFantasySource", () => {
       snapshot.scores.filter((score) =>
         postseason.some((matchup) => matchup.id === score.matchupId),
       ),
-    ).toHaveLength(2);
+    ).toHaveLength(4);
+  });
+
+  it("marks a franchise's later consolation games as eliminated after its first consolation loss", async () => {
+    const payload = createLeaguePayload(2025);
+    payload.teams.push(
+      {
+        id: 3,
+        name: "Synthetic Team Three",
+      } as unknown as (typeof payload.teams)[number],
+      {
+        id: 4,
+        name: "Synthetic Team Four",
+      } as unknown as (typeof payload.teams)[number],
+    );
+    payload.settings.size = 4;
+    payload.schedule.push(
+      {
+        id: 6,
+        matchupPeriodId: 1,
+        home: { teamId: 3, totalPoints: 70 },
+        away: { teamId: 4, totalPoints: 65 },
+      } as unknown as (typeof payload.schedule)[number],
+      {
+        id: 2,
+        matchupPeriodId: 2,
+        playoffTierType: "LOSERS_CONSOLATION_LADDER" as const,
+        home: { teamId: 1, totalPoints: 100 },
+        away: { teamId: 2, totalPoints: 50 },
+      } as unknown as (typeof payload.schedule)[number],
+      {
+        id: 3,
+        matchupPeriodId: 2,
+        playoffTierType: "LOSERS_CONSOLATION_LADDER" as const,
+        home: { teamId: 3, totalPoints: 90 },
+        away: { teamId: 4, totalPoints: 40 },
+      } as unknown as (typeof payload.schedule)[number],
+      {
+        id: 4,
+        matchupPeriodId: 3,
+        playoffTierType: "LOSERS_CONSOLATION_LADDER" as const,
+        home: { teamId: 2, totalPoints: 30 },
+        away: { teamId: 4, totalPoints: 70 },
+      } as unknown as (typeof payload.schedule)[number],
+      {
+        id: 5,
+        matchupPeriodId: 3,
+        playoffTierType: "LOSERS_CONSOLATION_LADDER" as const,
+        home: { teamId: 1, totalPoints: 60 },
+        away: { teamId: 3, totalPoints: 55 },
+      } as unknown as (typeof payload.schedule)[number],
+    );
+    const source = createSource(payload);
+
+    const snapshot = await source.fetchSeason({
+      year: 2025,
+      knownMappings: [],
+    });
+
+    const weekTwo = snapshot.matchups.filter((matchup) => matchup.week === 2);
+    const weekThree = snapshot.matchups.filter(
+      (matchup) => matchup.week === 3,
+    );
+
+    // Both week 2 games are each team's first consolation game, so neither
+    // team is eliminated yet even though team 2 and team 3 lost.
+    expect(weekTwo.every((matchup) => matchup.phase === "consolation")).toBe(
+      true,
+    );
+
+    const rematchOfEliminatedTeams = weekThree.find(
+      (matchup) =>
+        matchup.homeFranchiseId ===
+        snapshot.franchises[1].id /* team 2 */,
+    );
+    expect(rematchOfEliminatedTeams?.phase).toBe("consolation_eliminated");
+    expect(
+      weekThree.map((matchup) => matchup.phase).sort(),
+    ).toEqual(["consolation", "consolation_eliminated"]);
   });
 
   it("surfaces authentication rejection without exposing cookies", async () => {

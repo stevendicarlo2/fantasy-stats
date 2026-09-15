@@ -96,6 +96,30 @@ Turso mode uses `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`. Those values are
 validated only when Turso is selected. Example placeholders are rejected
 before a connection attempt.
 
+## Migrations that rebuild a table
+
+SQLite cannot alter a `CHECK` constraint in place, so a migration that needs
+to change one (for example, adding a new enum value) must rebuild the table:
+create a replacement table with the new constraint, copy the rows across,
+drop the original, and rename the replacement into place.
+
+Foreign key enforcement is on by default. If any other table has an
+`ON DELETE CASCADE` foreign key onto the table being rebuilt, dropping that
+table triggers SQLite's implicit cascading `DELETE`, silently destroying the
+dependent rows before the migration runner even reaches the `CREATE TABLE`
+statement for the replacement. Foreign keys without `ON DELETE CASCADE` are
+safer only in that they fail loudly (a `FOREIGN KEY constraint failed` error)
+instead of silently losing data, but they still block the migration.
+
+The migration runner (`migration-runner.ts`) disables foreign key enforcement
+for the duration of every migration run and restores it immediately
+afterward, so table-rebuild migrations no longer need to (and cannot,
+individually) manage this themselves — `PRAGMA foreign_keys` is a no-op once
+a transaction has started, so setting it inside a migration's own SQL has no
+effect. `migration-runner.test.ts` includes a regression test that applies
+the real repository migrations against seeded dependent-table rows to verify
+this.
+
 ## Provider boundary
 
 All modes implement the application-owned `DatabaseProvider` interface.

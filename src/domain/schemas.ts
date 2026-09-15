@@ -91,7 +91,13 @@ export const matchupSchema: z.ZodType<Matchup> = z
     id: canonicalIdSchema,
     seasonId: canonicalIdSchema,
     week: weekSchema,
-    phase: z.enum(["regular", "playoff", "consolation"]),
+    phase: z.enum([
+      "regular",
+      "playoff",
+      "playoff_eliminated",
+      "consolation",
+      "consolation_eliminated",
+    ]),
     homeFranchiseId: canonicalIdSchema,
     awayFranchiseId: canonicalIdSchema.nullable(),
   })

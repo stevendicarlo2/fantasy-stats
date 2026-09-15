@@ -1,6 +1,9 @@
+import { randomUUID } from "node:crypto";
 import {
   copyFile,
+  mkdir,
   mkdtemp,
+  readdir,
   rm,
   unlink,
   writeFile,
@@ -266,5 +269,130 @@ describe("createLocalMigrationRunner", () => {
         migrationsDirectory: directory,
       }),
     ).toThrow(MigrationConfigurationError);
+  });
+
+  it("preserves rows in tables with ON DELETE CASCADE foreign keys when a later migration rebuilds the table they reference", async () => {
+    // This reproduces the real repository migration set: it applies
+    // 0001-0008, seeds one row into every table that has an
+    // `ON DELETE CASCADE` foreign key onto `matchups` (the exact shape
+    // migration 0009 rebuilds), then applies 0009 and asserts none of that
+    // data was silently deleted. SQLite performs an implicit cascading
+    // DELETE on ON DELETE CASCADE dependents the moment a referenced table
+    // is dropped, whenever foreign key enforcement is on - which it is by
+    // default for these local sqlite3-backed databases - so this guards
+    // against any future table-rebuild migration reintroducing that bug.
+    const realMigrationsDirectory = resolve(process.cwd(), "migrations");
+    const { directory, databaseUrl } = await createTemporaryDatabase();
+    const stagedMigrationsDirectory = join(directory, "staged");
+    await mkdir(stagedMigrationsDirectory);
+
+    const migrationFiles = (
+      await readdir(realMigrationsDirectory)
+    ).filter((name) => name.endsWith(".sql")).sort();
+    const migrationsBeforeRebuild = migrationFiles.filter(
+      (name) => name < "0009",
+    );
+
+    for (const name of migrationsBeforeRebuild) {
+      await copyFile(
+        join(realMigrationsDirectory, name),
+        join(stagedMigrationsDirectory, name),
+      );
+    }
+
+    const runnerBeforeRebuild = createLocalMigrationRunner({
+      databaseUrl,
+      migrationsDirectory: stagedMigrationsDirectory,
+    });
+    await runnerBeforeRebuild.runMigrations();
+    runnerBeforeRebuild.close();
+
+    const client = createClient({ url: databaseUrl });
+    const seasonId = randomUUID();
+    const homeFranchiseId = randomUUID();
+    const awayFranchiseId = randomUUID();
+    const matchupId = randomUUID();
+    const leagueId = randomUUID();
+
+    await client.execute({
+      sql: "INSERT INTO leagues (id, name) VALUES (?, 'Test League')",
+      args: [leagueId],
+    });
+    await client.execute({
+      sql: `
+        INSERT INTO seasons
+          (id, league_id, year, team_count, regular_season_start_week,
+           regular_season_end_week)
+        VALUES (?, ?, 2023, 2, 1, 1)
+      `,
+      args: [seasonId, leagueId],
+    });
+    await client.execute({
+      sql: "INSERT INTO franchises (id, league_id) VALUES (?, ?), (?, ?)",
+      args: [homeFranchiseId, leagueId, awayFranchiseId, leagueId],
+    });
+    await client.execute({
+      sql: `
+        INSERT INTO matchups
+          (id, season_id, week, phase, home_franchise_id, away_franchise_id)
+        VALUES (?, ?, 1, 'regular', ?, ?)
+      `,
+      args: [matchupId, seasonId, homeFranchiseId, awayFranchiseId],
+    });
+    await client.execute({
+      sql: `
+        INSERT INTO imported_matchup_scores (matchup_id, franchise_id, score)
+        VALUES (?, ?, 100), (?, ?, 90)
+      `,
+      args: [matchupId, homeFranchiseId, matchupId, awayFranchiseId],
+    });
+    await client.execute({
+      sql: `
+        INSERT INTO matchup_overrides
+          (id, matchup_id, franchise_id, score_adjustment, reason, created_at)
+        VALUES (?, ?, ?, 5, 'manual correction', ?)
+      `,
+      args: [randomUUID(), matchupId, homeFranchiseId, new Date().toISOString()],
+    });
+    await client.execute({
+      sql: `
+        INSERT INTO matchup_scoring_periods (matchup_id, scoring_period)
+        VALUES (?, 1)
+      `,
+      args: [matchupId],
+    });
+    client.close();
+
+    await copyFile(
+      join(realMigrationsDirectory, "0009_playoff_elimination_phases.sql"),
+      join(stagedMigrationsDirectory, "0009_playoff_elimination_phases.sql"),
+    );
+
+    const runnerAfterRebuild = createLocalMigrationRunner({
+      databaseUrl,
+      migrationsDirectory: stagedMigrationsDirectory,
+    });
+    await runnerAfterRebuild.runMigrations();
+    runnerAfterRebuild.close();
+
+    const verificationClient = createClient({ url: databaseUrl });
+    const [matchups, scores, overrides, scoringPeriods] = await Promise.all([
+      verificationClient.execute("SELECT COUNT(*) AS n FROM matchups"),
+      verificationClient.execute(
+        "SELECT COUNT(*) AS n FROM imported_matchup_scores",
+      ),
+      verificationClient.execute(
+        "SELECT COUNT(*) AS n FROM matchup_overrides",
+      ),
+      verificationClient.execute(
+        "SELECT COUNT(*) AS n FROM matchup_scoring_periods",
+      ),
+    ]);
+    verificationClient.close();
+
+    expect(matchups.rows[0].n).toBe(1);
+    expect(scores.rows[0].n).toBe(2);
+    expect(overrides.rows[0].n).toBe(1);
+    expect(scoringPeriods.rows[0].n).toBe(1);
   });
 });

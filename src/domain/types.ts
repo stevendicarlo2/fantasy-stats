@@ -32,7 +32,12 @@ export interface FranchiseDisplayName {
   displayName: string;
 }
 
-export type MatchupPhase = "regular" | "playoff" | "consolation";
+export type MatchupPhase =
+  | "regular"
+  | "playoff"
+  | "playoff_eliminated"
+  | "consolation"
+  | "consolation_eliminated";
 
 export interface Matchup {
   id: CanonicalId;

@@ -162,6 +162,7 @@ describe("libSQL database provider", () => {
         "0006_season_franchise_names.sql",
         "0007_season_playoff_team_count.sql",
         "0008_matchup_roster_data.sql",
+        "0009_playoff_elimination_phases.sql",
       ],
     });
     await expect(provider.runMigrations()).resolves.toEqual({
