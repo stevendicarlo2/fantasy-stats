@@ -57,7 +57,7 @@ describe("POST /api/sql/copilot", () => {
         generate: vi.fn().mockResolvedValue({
           response: "I generated a waiver query.",
           statement: "SELECT missing_column FROM fantasy_transactions",
-          parameters: [],
+          parameters: {},
         }),
       },
       sqlConsoleService: {

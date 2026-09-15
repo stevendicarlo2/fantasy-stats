@@ -48,8 +48,8 @@ describe("CopilotCliSqlQueryGenerator", () => {
   it("runs Copilot with repository read access and validates its JSON response", async () => {
     const response = {
       response: "I generated a query for the 2017 season.",
-      statement: "SELECT year FROM seasons WHERE year = ?",
-      parameters: [2017],
+      statement: "SELECT year FROM seasons WHERE year = $year",
+      parameters: { year: 2017 },
     };
     const executor = vi.fn().mockResolvedValue({
       stdout: [
@@ -116,7 +116,7 @@ describe("CopilotCliSqlQueryGenerator", () => {
           `process.stdout.write(JSON.stringify({
             response: "I generated a query.",
             statement: process.env.${probeName} ?? "SELECT 1",
-            parameters: [],
+            parameters: {},
           }).split("").map((deltaContent) => JSON.stringify({
             type: "assistant.message_delta",
             data: { deltaContent },
@@ -143,7 +143,7 @@ describe("CopilotCliSqlQueryGenerator", () => {
       await expect(generator.generate("Show data")).resolves.toEqual({
         response: "I generated a query.",
         statement: "SELECT 1",
-        parameters: [],
+        parameters: {},
       });
     } finally {
       if (originalProbe === undefined) {
@@ -167,8 +167,8 @@ describe("CopilotCliSqlQueryGenerator", () => {
           data: {
             deltaContent: JSON.stringify({
               response: "I generated a query.",
-              statement: "SELECT ?",
-              parameters: [true],
+              statement: "SELECT $value",
+              parameters: { value: true },
             }),
           },
         })}\n`,
@@ -188,7 +188,7 @@ describe("CopilotCliSqlQueryGenerator", () => {
     const response = {
       response: "I generated a useful query.",
       statement: "SELECT 1",
-      parameters: [],
+      parameters: {},
     };
     const executor = vi.fn(
       async (
@@ -200,7 +200,7 @@ describe("CopilotCliSqlQueryGenerator", () => {
       ) => {
         for (const deltaContent of [
           '{"response":"I generated ',
-          'a useful query.","statement":"SELECT 1","parameters":[]}',
+          'a useful query.","statement":"SELECT 1","parameters":{}}',
         ]) {
           options.onStdout?.(
             `${JSON.stringify({
@@ -240,7 +240,7 @@ describe("CopilotCliSqlQueryGenerator", () => {
     const response = {
       response: "I generated a query.",
       statement: "SELECT 1",
-      parameters: [],
+      parameters: {},
     };
     const stdout = [
       {
@@ -303,7 +303,7 @@ describe("CopilotCliSqlQueryGenerator", () => {
     const response = {
       response: "I generated a query.",
       statement: "SELECT year FROM seasons ORDER BY year DESC",
-      parameters: [],
+      parameters: {},
     };
     const executor = vi.fn(
       async (
@@ -349,7 +349,7 @@ describe("CopilotCliSqlQueryGenerator", () => {
     const response = {
       response: "I generated a query that lists imported seasons.",
       statement: "SELECT year FROM seasons ORDER BY year DESC",
-      parameters: [],
+      parameters: {},
     };
     const stdout = [
       {

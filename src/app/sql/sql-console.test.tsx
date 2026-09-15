@@ -116,7 +116,7 @@ describe("SqlConsole Copilot generation", () => {
               formattedStatement: null,
               generatedQuery: {
                 statement: "SELECT MAX(year) FROM seasons",
-                parameters: "[]",
+                parameters: "{}",
               },
             },
           })}\n`,
@@ -246,7 +246,7 @@ describe("SqlConsole Copilot generation", () => {
               },
               generatedQuery: {
                 statement: "SELECT 1",
-                parameters: "[]",
+                parameters: "{}",
               },
               formattedStatement: null,
             },

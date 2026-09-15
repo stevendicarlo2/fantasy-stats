@@ -16,7 +16,7 @@ export const sqlStarterQueries: SqlStarterQuery[] = [
   regular_season_end_week
 FROM seasons
 ORDER BY year DESC;`,
-    parameters: "[]",
+    parameters: "{}",
   },
   {
     id: "standings",
@@ -33,9 +33,9 @@ ORDER BY year DESC;`,
 FROM regular_season_anp_standings AS standings
 LEFT JOIN franchise_display_names AS display_names
   ON display_names.franchise_id = standings.franchise_id
-WHERE standings.season_year = ?
+WHERE standings.season_year = $year
 ORDER BY standings.qualification_rank;`,
-    parameters: "[2017]",
+    parameters: '{"year":2017}',
   },
   {
     id: "weekly-results",
@@ -50,9 +50,9 @@ ORDER BY standings.qualification_rank;`,
   head_to_head_bonus,
   adjusted_nascar_points
 FROM weekly_adjusted_nascar_points
-WHERE season_year = ? AND week = ?
+WHERE season_year = $year AND week = $week
 ORDER BY matchup_id, effective_score DESC;`,
-    parameters: "[2017, 1]",
+    parameters: '{"year":2017,"week":1}',
   },
   {
     id: "adjustments",
@@ -69,6 +69,6 @@ FROM matchup_overrides
 INNER JOIN matchups ON matchups.id = matchup_overrides.matchup_id
 INNER JOIN seasons ON seasons.id = matchups.season_id
 ORDER BY seasons.year DESC, matchups.week;`,
-    parameters: "[]",
+    parameters: "{}",
   },
 ];

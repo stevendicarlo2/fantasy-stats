@@ -24,8 +24,8 @@ describe("SqlQueryAssistantService", () => {
       generate: vi.fn().mockResolvedValue({
         response: "I generated a season query.",
         statement:
-          "  SELECT year, COUNT(*) AS total FROM seasons WHERE year > ? GROUP BY year ORDER BY year DESC  ",
-        parameters: [],
+          "  SELECT year, COUNT(*) AS total FROM seasons WHERE year > $year GROUP BY year ORDER BY year DESC  ",
+        parameters: {},
       }),
     };
     const service = new SqlQueryAssistantService(generator);
@@ -41,13 +41,13 @@ describe("SqlQueryAssistantService", () => {
         "FROM",
         "  seasons",
         "WHERE",
-        "  year > ?",
+        "  year > $year",
         "GROUP BY",
         "  year",
         "ORDER BY",
         "  year DESC",
       ].join("\n"),
-      parameters: [],
+      parameters: {},
     });
     expect(generator.generate).toHaveBeenCalledWith(
       "Show imported seasons",
@@ -100,7 +100,9 @@ describe("SqlQueryAssistantService", () => {
       generate: vi.fn().mockResolvedValue({
         response: "I generated a query.",
         statement: "SELECT 1",
-        parameters: Array.from({ length: 51 }, () => null),
+        parameters: Object.fromEntries(
+          Array.from({ length: 51 }, (_, index) => [`p${index}`, null]),
+        ),
       }),
     });
 

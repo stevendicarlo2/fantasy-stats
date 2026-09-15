@@ -21,15 +21,15 @@ describe("SqlConsoleService", () => {
       "FROM",
       "  seasons",
       "WHERE",
-      "  year > ?",
+      "  year > $year",
       "GROUP BY",
       "  year",
     ].join("\n");
 
     await expect(
       service.execute(
-        "  select year,count(*) as total from seasons where year > ? group by year  ",
-        [2017],
+        "  select year,count(*) as total from seasons where year > $year group by year  ",
+        { year: 2017 },
       ),
     ).resolves.toEqual({
       columns: ["season_year"],
@@ -39,7 +39,7 @@ describe("SqlConsoleService", () => {
     });
     expect(database.executeReadOnlyQuery).toHaveBeenCalledWith({
       statement: formattedStatement,
-      parameters: [2017],
+      parameters: { year: 2017 },
     });
   });
 
@@ -47,7 +47,7 @@ describe("SqlConsoleService", () => {
     const database = { executeReadOnlyQuery: vi.fn() };
     const service = new SqlConsoleService(database);
 
-    await expect(service.execute(" ", [])).rejects.toThrow(
+    await expect(service.execute(" ", {})).rejects.toThrow(
       "Enter a SQL query",
     );
     expect(database.executeReadOnlyQuery).not.toHaveBeenCalled();
@@ -65,7 +65,7 @@ describe("SqlConsoleService", () => {
       }),
     });
 
-    await expect(service.execute("SELECT value FROM values", [])).resolves.toMatchObject({
+    await expect(service.execute("SELECT value FROM values", {})).resolves.toMatchObject({
       rowCount: SQL_CONSOLE_MAX_ROWS + 1,
       truncated: true,
       rows: rows.slice(0, SQL_CONSOLE_MAX_ROWS),

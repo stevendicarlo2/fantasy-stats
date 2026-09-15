@@ -378,8 +378,9 @@ export function SqlConsole({ copilotAvailable }: SqlConsoleProps) {
             required
           />
           <p className="field-help">
-            JSON array matched to <code>?</code> placeholders. Allowed values:
-            strings, finite numbers, and null.
+            JSON object mapping parameter names to values for{" "}
+            <code>$name</code> placeholders. Allowed values: strings, finite
+            numbers, and null.
           </p>
 
           <button

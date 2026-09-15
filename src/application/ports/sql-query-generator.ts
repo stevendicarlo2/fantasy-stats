@@ -1,9 +1,9 @@
-import type { SqlParameter } from "./database-provider";
+import type { NamedSqlParameters } from "./database-provider";
 
 export interface GeneratedSqlQuery {
   response: string;
   statement: string;
-  parameters: SqlParameter[];
+  parameters: NamedSqlParameters;
 }
 
 export type SqlQueryGenerationUpdate =

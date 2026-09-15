@@ -15,8 +15,8 @@ describe("executeSqlConsoleAction", () => {
       }),
     };
     const formData = new FormData();
-    formData.set("statement", "SELECT ? AS season_year");
-    formData.set("parameters", '[2017, "regular", null]');
+    formData.set("statement", "SELECT $year AS season_year");
+    formData.set("parameters", '{"year":2017,"phase":"regular","note":null}');
 
     await expect(
       executeSqlConsoleAction(formData, () => service),
@@ -25,8 +25,8 @@ describe("executeSqlConsoleAction", () => {
       message: "Query returned 1 row",
     });
     expect(service.execute).toHaveBeenCalledWith(
-      "SELECT\n  ? AS season_year",
-      [2017, "regular", null],
+      "SELECT\n  $year AS season_year",
+      { year: 2017, phase: "regular", note: null },
     );
   });
 
@@ -53,7 +53,7 @@ describe("executeSqlConsoleAction", () => {
       "statement",
       "select year,count(*) as total from seasons group by year",
     );
-    formData.set("parameters", "[]");
+    formData.set("parameters", "{}");
 
     await expect(
       executeSqlConsoleAction(formData, () => service),
@@ -63,14 +63,14 @@ describe("executeSqlConsoleAction", () => {
     });
     expect(service.execute).toHaveBeenCalledWith(
       formattedStatement,
-      [],
+      {},
     );
   });
 
   it("rejects invalid parameter values before loading the service", async () => {
     const formData = new FormData();
-    formData.set("statement", "SELECT ?");
-    formData.set("parameters", "[true]");
+    formData.set("statement", "SELECT $value");
+    formData.set("parameters", '{"value":true}');
 
     await expect(
       executeSqlConsoleAction(formData, () => {
@@ -89,7 +89,7 @@ describe("executeSqlConsoleAction", () => {
   it("returns safe provider errors", async () => {
     const formData = new FormData();
     formData.set("statement", "DELETE FROM seasons");
-    formData.set("parameters", "[]");
+    formData.set("parameters", "{}");
 
     await expect(
       executeSqlConsoleAction(formData, () => ({
@@ -110,7 +110,7 @@ describe("executeSqlConsoleAction", () => {
   it("returns unexpected SQL execution errors to the user", async () => {
       const formData = new FormData();
       formData.set("statement", "SELECT missing_column FROM seasons");
-      formData.set("parameters", "[]");
+      formData.set("parameters", "{}");
 
       await expect(
         executeSqlConsoleAction(formData, () => ({
@@ -129,8 +129,8 @@ describe("executeSqlConsoleAction", () => {
     const assistant = {
       generate: vi.fn().mockResolvedValue({
         response: "I generated a season query.",
-        statement: "SELECT year FROM seasons WHERE year = ?",
-        parameters: [2017],
+        statement: "SELECT year FROM seasons WHERE year = $year",
+        parameters: { year: 2017 },
       }),
     };
     const console = { execute: vi.fn() };
@@ -147,8 +147,8 @@ describe("executeSqlConsoleAction", () => {
       message: "Query generated. Review or run it below.",
       result: null,
       generatedQuery: {
-        statement: "SELECT year FROM seasons WHERE year = ?",
-        parameters: "[2017]",
+        statement: "SELECT year FROM seasons WHERE year = $year",
+        parameters: '{"year":2017}',
       },
       formattedStatement: null,
     });
@@ -158,8 +158,8 @@ describe("executeSqlConsoleAction", () => {
   it("executes a generated query through the console service", async () => {
     const query = {
       response: "I generated a season query.",
-      statement: "SELECT year FROM seasons WHERE year = ?",
-      parameters: [2017],
+      statement: "SELECT year FROM seasons WHERE year = $year",
+      parameters: { year: 2017 },
     };
     const result = {
       columns: ["year"],
@@ -183,7 +183,7 @@ describe("executeSqlConsoleAction", () => {
       result,
       generatedQuery: {
         statement: query.statement,
-        parameters: "[2017]",
+        parameters: '{"year":2017}',
       },
     });
     expect(console.execute).toHaveBeenCalledWith(
@@ -202,7 +202,7 @@ describe("executeSqlConsoleAction", () => {
           generate: vi.fn().mockResolvedValue({
             response: "I cannot safely delete seasons, so review this query.",
             statement: "DELETE FROM seasons",
-            parameters: [],
+            parameters: {},
           }),
         },
         console: {
@@ -221,7 +221,7 @@ describe("executeSqlConsoleAction", () => {
       result: null,
       generatedQuery: {
         statement: "DELETE FROM seasons",
-        parameters: "[]",
+        parameters: "{}",
       },
       formattedStatement: null,
     });

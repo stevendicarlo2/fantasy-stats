@@ -43,7 +43,7 @@ across indented lines for readability.
 
 The CLI uses JSONL streaming events internally. Its final model response is a
 strict JSON object containing a user-facing explanation, SQL statement, and
-parameter array; provider events and the machine-readable JSON are parsed at
+parameter object; provider events and the machine-readable JSON are parsed at
 the server adapter boundary and are not displayed in the browser. The process
 is limited to 180 seconds and 2 MiB of JSONL protocol output. The final
 machine-readable response is still schema-validated, and malformed output is
@@ -95,20 +95,23 @@ SQLite scalar functions remain available. In particular,
 `REPLACE(value, pattern, replacement)` is allowed for formatting query output,
 while mutating uses of `REPLACE` are rejected.
 
-Query parameters use `?` placeholders. Enter parameter values as a JSON array:
+Query parameters use `$name` placeholders. Enter parameter values as a JSON
+object keyed by name (without the `$`):
 
 ```sql
 SELECT *
 FROM regular_season_anp_standings
-WHERE season_year = ?;
+WHERE season_year = $year;
 ```
 
 ```json
-[2017]
+{ "year": 2017 }
 ```
 
-Parameters may contain strings, finite numbers, and `null`. The console accepts
-at most 50 parameters and displays at most the first 500 result rows.
+Parameter names may contain only letters, numbers, and underscores, and must
+not start with a number. Parameters may contain strings, finite numbers, and
+`null`. The console accepts at most 50 parameters and displays at most the
+first 500 result rows.
 
 Submitting a query immediately replaces any previous result or error in the
 results panel. Copilot requests show **Generating...** while the query is being

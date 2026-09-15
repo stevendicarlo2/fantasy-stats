@@ -2,8 +2,8 @@ import { SafeOperationalError } from "@/application/errors";
 import { format as formatSql } from "sql-formatter";
 import type {
   DatabaseProvider,
+  NamedSqlParameters,
   ReadOnlyQueryResult,
-  SqlParameter,
 } from "@/application/ports/database-provider";
 
 export const SQL_CONSOLE_MAX_ROWS = 500;
@@ -19,7 +19,7 @@ type SqlConsoleDatabase = Pick<DatabaseProvider, "executeReadOnlyQuery">;
 
 export function normalizeSqlConsoleQuery(
   statement: string,
-  parameters: SqlParameter[],
+  parameters: NamedSqlParameters,
 ) {
   const trimmedStatement = statement.trim();
 
@@ -33,7 +33,7 @@ export function normalizeSqlConsoleQuery(
     );
   }
 
-  if (parameters.length > SQL_CONSOLE_MAX_PARAMETERS) {
+  if (Object.keys(parameters).length > SQL_CONSOLE_MAX_PARAMETERS) {
     throw new SafeOperationalError(
       `SQL queries support at most ${SQL_CONSOLE_MAX_PARAMETERS} parameters`,
     );
@@ -70,7 +70,7 @@ export class SqlConsoleService {
 
   async execute(
     statement: string,
-    parameters: SqlParameter[],
+    parameters: NamedSqlParameters,
   ): Promise<SqlConsoleResult> {
     const query = normalizeSqlConsoleQuery(statement, parameters);
 

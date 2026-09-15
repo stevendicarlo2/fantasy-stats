@@ -1,5 +1,5 @@
 import { SafeOperationalError } from "@/application/errors";
-import type { SqlParameter } from "@/application/ports/database-provider";
+import type { NamedSqlParameters } from "@/application/ports/database-provider";
 import {
   normalizeSqlConsoleQuery,
   type SqlConsoleResult,
@@ -41,24 +41,38 @@ function requireString(formData: FormData, name: string) {
   return value;
 }
 
-function parseParameters(value: string): SqlParameter[] {
+const PARAMETER_NAME_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+function parseParameters(value: string): NamedSqlParameters {
   let parsed: unknown;
 
   try {
     parsed = JSON.parse(value);
   } catch {
     throw new SafeOperationalError(
-      "Parameters must be a valid JSON array",
+      "Parameters must be a valid JSON object",
     );
   }
 
-  if (!Array.isArray(parsed)) {
-    throw new SafeOperationalError("Parameters must be a JSON array");
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    Array.isArray(parsed)
+  ) {
+    throw new SafeOperationalError("Parameters must be a JSON object");
+  }
+
+  const entries = Object.entries(parsed as Record<string, unknown>);
+
+  if (!entries.every(([name]) => PARAMETER_NAME_PATTERN.test(name))) {
+    throw new SafeOperationalError(
+      "Parameter names may contain only letters, numbers, and underscores, and must not start with a number",
+    );
   }
 
   if (
-    !parsed.every(
-      (parameter) =>
+    !entries.every(
+      ([, parameter]) =>
         parameter === null ||
         typeof parameter === "string" ||
         (typeof parameter === "number" && Number.isFinite(parameter)),
@@ -69,7 +83,7 @@ function parseParameters(value: string): SqlParameter[] {
     );
   }
 
-  return parsed;
+  return parsed as NamedSqlParameters;
 }
 
 export function formatResultMessage(result: SqlConsoleResult) {

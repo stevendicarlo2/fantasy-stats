@@ -23,10 +23,11 @@ export interface MigrationResult {
 
 export type SqlParameter = string | number | null;
 export type SqlValue = string | number | null;
+export type NamedSqlParameters = Record<string, SqlParameter>;
 
 export interface ReadOnlyQuery {
   statement: string;
-  parameters?: SqlParameter[];
+  parameters?: SqlParameter[] | NamedSqlParameters;
 }
 
 export interface ReadOnlyQueryResult {
