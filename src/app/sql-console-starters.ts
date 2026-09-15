@@ -71,4 +71,34 @@ INNER JOIN seasons ON seasons.id = matchups.season_id
 ORDER BY seasons.year DESC, matchups.week;`,
     parameters: "{}",
   },
+  {
+    id: "head-to-head",
+    label: "Head-to-head matchup history",
+    statement: `SELECT
+  first_score.season_year,
+  first_score.week,
+  first_score.phase,
+  first_name.display_name AS first_person,
+  first_score.effective_score AS first_score,
+  second_name.display_name AS second_person,
+  second_score.effective_score AS second_score,
+  CASE
+    WHEN first_score.effective_score > second_score.effective_score THEN first_name.display_name || ' won'
+    WHEN first_score.effective_score < second_score.effective_score THEN second_name.display_name || ' won'
+    ELSE 'Tie'
+  END AS result
+FROM
+  weekly_adjusted_nascar_points AS first_score
+  INNER JOIN weekly_adjusted_nascar_points AS second_score ON second_score.matchup_id = first_score.matchup_id
+  AND second_score.franchise_id = first_score.opponent_franchise_id
+  INNER JOIN franchise_display_names AS first_name ON first_name.franchise_id = first_score.franchise_id
+  INNER JOIN franchise_display_names AS second_name ON second_name.franchise_id = second_score.franchise_id
+WHERE
+  first_name.display_name = $first_person
+  AND second_name.display_name = $second_person
+ORDER BY
+  first_score.season_year,
+  first_score.week;`,
+    parameters: '{"first_person":"Steven","second_person":"Mike"}',
+  },
 ];
