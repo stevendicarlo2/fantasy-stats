@@ -45,7 +45,7 @@ The CLI uses JSONL streaming events internally. Its final model response is a
 strict JSON object containing a user-facing explanation, SQL statement, and
 parameter array; provider events and the machine-readable JSON are parsed at
 the server adapter boundary and are not displayed in the browser. The process
-is limited to 60 seconds and 2 MiB of JSONL protocol output. The final
+is limited to 180 seconds and 2 MiB of JSONL protocol output. The final
 machine-readable response is still schema-validated, and malformed output is
 reported as an error.
 

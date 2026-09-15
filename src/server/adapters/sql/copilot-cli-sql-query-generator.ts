@@ -11,7 +11,7 @@ import type {
   SqlQueryGenerator,
 } from "@/application/ports/sql-query-generator";
 
-const COPILOT_TIMEOUT_MS = 60_000;
+const COPILOT_TIMEOUT_MS = 180_000;
 const COPILOT_PROTOCOL_MAX_OUTPUT_BYTES = 2 * 1024 * 1024;
 const COPILOT_AVAILABILITY_TIMEOUT_MS = 5_000;
 const COPILOT_AVAILABILITY_MAX_OUTPUT_BYTES = 8 * 1024;
@@ -562,7 +562,7 @@ export class CopilotCliSqlQueryGenerator implements SqlQueryGenerator {
 
       if (isCommandError(error) && error.killed) {
         throw new SafeOperationalError(
-          "Copilot did not finish generating the query within 60 seconds",
+          "Copilot did not finish generating the query within 180 seconds",
         );
       }
 

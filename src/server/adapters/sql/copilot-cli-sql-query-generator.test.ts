@@ -88,7 +88,7 @@ describe("CopilotCliSqlQueryGenerator", () => {
     expect(args.at(-1)).toContain("Show the 2017 season");
     expect(options).toMatchObject({
       cwd: "/application",
-      timeout: 60_000,
+      timeout: 180_000,
       maxBuffer: 2 * 1024 * 1024,
     });
     expect(options.env).not.toBe(process.env);
@@ -470,7 +470,7 @@ setTimeout(() => {
         vi.fn().mockRejectedValue(timeoutError),
       ).generate("Show data"),
     ).rejects.toThrow(
-      "Copilot did not finish generating the query within 60 seconds",
+      "Copilot did not finish generating the query within 180 seconds",
     );
 
     await expect(
