@@ -90,7 +90,7 @@ describe("ImportForm", () => {
     );
     fireEvent.submit(
       view.getByRole("button", {
-        name: "Sync selected datasets",
+        name: "Import selected",
       }).closest("form")!,
     );
 

@@ -6,7 +6,10 @@ import { getWebRuntime } from "@/server/runtime/web-runtime";
 
 import { ImportForm } from "./import-form";
 import { RelativeTime } from "./relative-time";
-import { SeasonSyncControls } from "./season-sync-controls";
+import {
+  DatasetSyncButton,
+  SeasonSyncControls,
+} from "./season-sync-controls";
 
 const importDatasets = [
   ["core", "Core"],
@@ -23,7 +26,12 @@ async function loadPageData() {
       runtime.latestSeason,
     );
 
-    return { ok: true as const, runtime, dashboard };
+    return {
+      ok: true as const,
+      runtime,
+      dashboard,
+      renderedAt: Date.now(),
+    };
   } catch (error) {
     return {
       ok: false as const,
@@ -58,7 +66,7 @@ export default async function Home() {
     );
   }
 
-  const { runtime, dashboard } = pageData;
+  const { runtime, dashboard, renderedAt } = pageData;
 
   return (
     <main className="shell">
@@ -81,118 +89,110 @@ export default async function Home() {
           </div>
         </header>
 
-        <section className="dashboard-grid">
-          <article className="panel">
-            <p className="panel-kicker">Data management</p>
-            <h2>Sync a season</h2>
-            <p>
-              Import a new season in the background, then use the controls
-              below for later refreshes. Manual score adjustments and prior
-              supplemental snapshots are preserved if a refresh fails.
-            </p>
-            <ImportForm
-              key={dashboard.importedSeasons
-                .map((season) => season.year)
-                .join(",")}
-              years={dashboard.availableYears}
-              importedYears={dashboard.importedSeasons.map(
-                (season) => season.year,
-              )}
-            />
-          </article>
-
-          <article className="panel">
+        <section>
+          <article className="panel season-history-panel">
             <p className="panel-kicker">Stored history</p>
-            <h2>{dashboard.importedSeasons.length} seasons imported</h2>
+            <div className="season-history-heading">
+              <div>
+                <h2>{dashboard.importedSeasons.length} seasons imported</h2>
+                <p>
+                  Open a season for analytics or refresh its persisted
+                  datasets.
+                </p>
+              </div>
+              <ImportForm
+                key={dashboard.importedSeasons
+                  .map((season) => season.year)
+                  .join(",")}
+                years={dashboard.availableYears}
+                importedYears={dashboard.importedSeasons.map(
+                  (season) => season.year,
+                )}
+              />
+            </div>
             {dashboard.importedSeasons.length === 0 ? (
               <p>No seasons are stored yet.</p>
             ) : (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Season</th>
-                      <th>Teams</th>
-                      <th>Dataset status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dashboard.importedSeasons.map((season) => (
-                      <tr key={season.year}>
-                        <td>
-                          <Link href={`/seasons/${season.year}`}>
-                            {season.year}
-                          </Link>
-                        </td>
-                        <td>{season.teamCount}</td>
-                        <td>
-                          <div className="dataset-status-list">
-                            {importDatasets.map(([dataset, label]) => {
-                              const status = season.datasetStatuses.find(
-                                (candidate) =>
-                                  candidate.dataset === dataset,
-                              ) ?? {
-                                dataset,
-                                activeRun: null,
-                                lastSuccessfulStartedAt: null,
-                                latestAttempt: null,
-                                consecutiveFailureCount: 0,
-                              };
-                              const latestFailure =
-                                status.latestAttempt &&
-                                (status.latestAttempt.status === "failed" ||
-                                  status.latestAttempt.status ===
-                                    "unavailable") &&
-                                (!status.lastSuccessfulStartedAt ||
-                                  status.latestAttempt.startedAt >
-                                    status.lastSuccessfulStartedAt)
-                                  ? status.latestAttempt
-                                  : null;
+              <div className="season-history-list">
+                {dashboard.importedSeasons.map((season) => (
+                  <section className="season-history-item" key={season.year}>
+                    <header className="season-history-item-heading">
+                      <div>
+                        <Link
+                          className="season-history-link"
+                          href={`/seasons/${season.year}`}
+                        >
+                          {season.year}
+                        </Link>
+                        <span>{season.teamCount} teams</span>
+                      </div>
+                      <SeasonSyncControls year={season.year} />
+                    </header>
+                    <div className="dataset-status-grid">
+                      {importDatasets.map(([dataset, label]) => {
+                        const status = season.datasetStatuses.find(
+                          (candidate) => candidate.dataset === dataset,
+                        ) ?? {
+                          dataset,
+                          activeRun: null,
+                          lastSuccessfulStartedAt: null,
+                          latestAttempt: null,
+                          consecutiveFailureCount: 0,
+                        };
+                        const latestFailure =
+                          status.latestAttempt &&
+                          (status.latestAttempt.status === "failed" ||
+                            status.latestAttempt.status === "unavailable") &&
+                          (!status.lastSuccessfulStartedAt ||
+                            status.latestAttempt.startedAt >
+                              status.lastSuccessfulStartedAt)
+                            ? status.latestAttempt
+                            : null;
 
-                              return (
-                                <div className="dataset-status" key={dataset}>
-                                  <span>
-                                    <strong>{label}</strong>
+                        return (
+                          <div className="dataset-status-card" key={dataset}>
+                            <div className="dataset-status-card-heading">
+                              <strong>{label}</strong>
+                              <div>
+                                {status.activeRun ? (
+                                  <span className="status running">
+                                    syncing
                                   </span>
-                                  {status.activeRun ? (
-                                    <span className="status running">
-                                      syncing
-                                    </span>
-                                  ) : null}
-                                  <span>
-                                    {status.lastSuccessfulStartedAt ? (
-                                      <>
-                                        Last synced{" "}
-                                        <RelativeTime
-                                          value={
-                                            status.lastSuccessfulStartedAt
-                                          }
-                                        />
-                                      </>
-                                    ) : (
-                                      "Never synced"
-                                    )}
-                                  </span>
-                                  {latestFailure ? (
-                                    <span
-                                      className={`status ${latestFailure.status}`}
-                                    >
-                                      {latestFailure.errorMessage}
-                                    </span>
-                                  ) : null}
-                                </div>
-                              );
-                            })}
+                                ) : null}
+                                <DatasetSyncButton
+                                  dataset={dataset}
+                                  label={label}
+                                  year={season.year}
+                                />
+                              </div>
+                            </div>
+                            <span className="dataset-status-time">
+                              {status.lastSuccessfulStartedAt ? (
+                                <>
+                                  Synced{" "}
+                                  <RelativeTime
+                                    initialNow={renderedAt}
+                                    key={`${status.lastSuccessfulStartedAt}:${renderedAt}`}
+                                    value={status.lastSuccessfulStartedAt}
+                                  />
+                                </>
+                              ) : (
+                                "Never synced"
+                              )}
+                            </span>
+                            {latestFailure ? (
+                              <span
+                                className={`dataset-status-error ${latestFailure.status}`}
+                              >
+                                {latestFailure.errorMessage}
+                              </span>
+                            ) : null}
                           </div>
-                        </td>
-                        <td>
-                          <SeasonSyncControls year={season.year} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
               </div>
             )}
           </article>

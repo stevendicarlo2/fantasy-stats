@@ -126,87 +126,90 @@ export function ImportForm({ importedYears, years }: ImportFormProps) {
   }
 
   if (availableYears.length === 0) {
-    return <p>Every configured season has been imported.</p>;
+    return (
+      <span className="import-season-complete">
+        Every configured season has been imported.
+      </span>
+    );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="import-form">
-      <label htmlFor="season-year">Season</label>
-      <select
-        id="season-year"
-        name="year"
-        value={year}
-        onChange={(event) => updateYear(Number(event.target.value))}
-        disabled={syncing}
-        required
-      >
-        {availableYears.map((year) => (
-          <option key={year} value={year}>
-            {year}
-          </option>
-        ))}
-      </select>
-      <details
-        className="sync-dataset-details"
-        open={datasetsExpanded}
-        onToggle={(event) =>
-          setDatasetsExpanded(event.currentTarget.open)
-        }
-      >
-        <summary>
-          <span>Datasets</span>
-          <strong>{selectionSummary}</strong>
-        </summary>
-        <div
-          className="sync-dataset-picker"
-          role="group"
-          aria-label="Datasets"
-          aria-live="polite"
+    <details className="import-season-control">
+      <summary>Import season</summary>
+      <form onSubmit={handleSubmit} className="import-form">
+        <label htmlFor="season-year">Season</label>
+        <select
+          id="season-year"
+          name="year"
+          value={year}
+          onChange={(event) => updateYear(Number(event.target.value))}
+          disabled={syncing}
+          required
         >
-          {datasets.map(({ id, label }) => {
-            const coreRequired = id === "core" && isNewSeason;
+          {availableYears.map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
+        </select>
+        <details
+          className="sync-dataset-details"
+          open={datasetsExpanded}
+          onToggle={(event) =>
+            setDatasetsExpanded(event.currentTarget.open)
+          }
+        >
+          <summary>
+            <span>Datasets</span>
+            <strong>{selectionSummary}</strong>
+          </summary>
+          <div
+            className="sync-dataset-picker"
+            role="group"
+            aria-label="Datasets"
+            aria-live="polite"
+          >
+            {datasets.map(({ id, label }) => {
+              const coreRequired = id === "core" && isNewSeason;
 
-            return (
-              <label key={id} className="sync-dataset-option">
-                <span>
-                  <input
-                    type="checkbox"
-                    aria-label={label}
-                    checked={selected.includes(id)}
-                    disabled={syncing || coreRequired}
-                    onChange={(event) =>
-                      updateSelection(id, event.target.checked)
-                    }
-                  />
-                  {label}
-                </span>
-                <strong className={`sync-progress ${progress[id]}`}>
-                  {progressLabel(
-                    progress[id],
-                    selected.includes(id),
-                    coreRequired,
-                  )}
-                </strong>
-              </label>
-            );
-          })}
-          {isNewSeason ? (
+              return (
+                <label key={id} className="sync-dataset-option">
+                  <span>
+                    <input
+                      type="checkbox"
+                      aria-label={label}
+                      checked={selected.includes(id)}
+                      disabled={syncing || coreRequired}
+                      onChange={(event) =>
+                        updateSelection(id, event.target.checked)
+                      }
+                    />
+                    {label}
+                  </span>
+                  <strong className={`sync-progress ${progress[id]}`}>
+                    {progressLabel(
+                      progress[id],
+                      selected.includes(id),
+                      coreRequired,
+                    )}
+                  </strong>
+                </label>
+              );
+            })}
             <p className="sync-note">
-              Core data is required because this season has not been imported.
+              Core data is required for a new season.
             </p>
-          ) : null}
-        </div>
-      </details>
-      <div className="button-row">
+          </div>
+        </details>
         <button type="submit" disabled={syncing || selected.length === 0}>
-          {syncing ? "Syncing..." : "Sync selected datasets"}
+          {syncing ? "Importing..." : "Import selected"}
         </button>
-      </div>
-      {message ? (
-        <p className="action-message" aria-live="polite">
-          {message}
-        </p>
-      ) : null}
-    </form>
+        {message ? (
+          <p className="action-message" aria-live="polite">
+            {message}
+          </p>
+        ) : null}
+      </form>
+    </details>
   );
 }

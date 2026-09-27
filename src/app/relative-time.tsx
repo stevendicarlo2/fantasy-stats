@@ -3,36 +3,36 @@
 import { useEffect, useState } from "react";
 
 interface RelativeTimeProps {
+  initialNow: number;
   value: string;
 }
 
-function formatRelative(value: string, now: number) {
-  const difference = new Date(value).getTime() - now;
-  const absolute = Math.abs(difference);
+export function formatRelative(value: string, now: number) {
+  const elapsed = Math.max(0, now - new Date(value).getTime());
   const formatter = new Intl.RelativeTimeFormat(undefined, {
     numeric: "auto",
   });
 
-  if (absolute < 60_000) {
-    return formatter.format(Math.round(difference / 1_000), "second");
+  if (elapsed < 60_000) {
+    return formatter.format(-Math.round(elapsed / 1_000), "second");
   }
-  if (absolute < 60 * 60_000) {
-    return formatter.format(Math.round(difference / 60_000), "minute");
+  if (elapsed < 60 * 60_000) {
+    return formatter.format(-Math.round(elapsed / 60_000), "minute");
   }
-  if (absolute < 24 * 60 * 60_000) {
+  if (elapsed < 24 * 60 * 60_000) {
     return formatter.format(
-      Math.round(difference / (60 * 60_000)),
+      -Math.round(elapsed / (60 * 60_000)),
       "hour",
     );
   }
   return formatter.format(
-    Math.round(difference / (24 * 60 * 60_000)),
+    -Math.round(elapsed / (24 * 60 * 60_000)),
     "day",
   );
 }
 
-export function RelativeTime({ value }: RelativeTimeProps) {
-  const [now, setNow] = useState(() => Date.now());
+export function RelativeTime({ initialNow, value }: RelativeTimeProps) {
+  const [now, setNow] = useState(initialNow);
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 60_000);
@@ -40,7 +40,11 @@ export function RelativeTime({ value }: RelativeTimeProps) {
   }, []);
 
   return (
-    <time dateTime={value} title={new Date(value).toLocaleString()}>
+    <time
+      dateTime={value}
+      suppressHydrationWarning
+      title={new Date(value).toLocaleString()}
+    >
       {formatRelative(value, now)}
     </time>
   );

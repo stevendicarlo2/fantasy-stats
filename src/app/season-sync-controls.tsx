@@ -7,7 +7,6 @@ import type { ImportDataset } from "@/domain/types";
 
 import {
   datasetDefinitions,
-  initialDatasetProgress,
   runDatasetBatch,
 } from "./dataset-sync-client";
 
@@ -17,19 +16,12 @@ interface SeasonSyncControlsProps {
 
 export function SeasonSyncControls({ year }: SeasonSyncControlsProps) {
   const router = useRouter();
-  const [progress, setProgress] = useState(initialDatasetProgress);
   const [running, setRunning] = useState(false);
 
   async function refresh(datasets: ImportDataset[]) {
     setRunning(true);
-    const next = initialDatasetProgress();
-    datasets.forEach((dataset) => {
-      next[dataset] = "waiting";
-    });
-    setProgress(next);
 
     await runDatasetBatch(year, datasets, "refresh", (dataset, status) => {
-      setProgress((current) => ({ ...current, [dataset]: status }));
       if (status === "succeeded") {
         router.refresh();
       }
@@ -41,30 +33,56 @@ export function SeasonSyncControls({ year }: SeasonSyncControlsProps) {
   return (
     <div className="season-sync-controls">
       <button
-        className="secondary"
         disabled={running}
         onClick={() =>
           void refresh(datasetDefinitions.map(({ id }) => id))
         }
         type="button"
       >
-        Refresh all
+        {running ? "Refreshing..." : "Refresh all"}
       </button>
-      <div className="dataset-refresh-buttons">
-        {datasetDefinitions.map(({ id, label }) => (
-          <button
-            className="secondary"
-            disabled={running}
-            key={id}
-            onClick={() => void refresh([id])}
-            type="button"
-          >
-            {progress[id] === "running"
-              ? `Syncing ${label.toLowerCase()}...`
-              : `Refresh ${label.toLowerCase()}`}
-          </button>
-        ))}
-      </div>
     </div>
+  );
+}
+
+interface DatasetSyncButtonProps {
+  dataset: ImportDataset;
+  label: string;
+  year: number;
+}
+
+export function DatasetSyncButton({
+  dataset,
+  label,
+  year,
+}: DatasetSyncButtonProps) {
+  const router = useRouter();
+  const [running, setRunning] = useState(false);
+
+  async function refresh() {
+    setRunning(true);
+    await runDatasetBatch(year, [dataset], "refresh", (_, status) => {
+      if (status === "succeeded") {
+        router.refresh();
+      }
+    });
+    setRunning(false);
+    router.refresh();
+  }
+
+  return (
+    <button
+      aria-label={`Refresh ${label.toLowerCase()}`}
+      className={`dataset-refresh-button${running ? " running" : ""}`}
+      disabled={running}
+      onClick={() => void refresh()}
+      title={`Refresh ${label.toLowerCase()}`}
+      type="button"
+    >
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <path d="M20 6v5h-5" />
+        <path d="M19 11a7.5 7.5 0 1 0 .25 3" />
+      </svg>
+    </button>
   );
 }
