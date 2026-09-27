@@ -14,6 +14,7 @@ export interface Season {
   playoffTeamCount: number | null;
   regularSeasonStartWeek: number;
   regularSeasonEndWeek: number;
+  isActive: boolean;
 }
 
 export interface Franchise {
@@ -87,6 +88,7 @@ export interface SourceMapping {
 }
 
 export type ImportOperation = "import" | "refresh";
+export type ImportTrigger = "legacy" | "manual" | "automatic" | "cli";
 export type ImportDataset =
   | "core"
   | "rosters"
@@ -102,6 +104,7 @@ export interface ImportRun {
   id: CanonicalId;
   provider: string;
   operation: ImportOperation;
+  trigger?: ImportTrigger;
   dataset?: ImportDataset;
   seasonYear: number;
   status: ImportRunStatus;
@@ -330,9 +333,18 @@ export type DatasetSourceResult<T> =
 
 export interface SeasonDatasetStatus {
   dataset: ImportDataset;
-  status: ImportRunStatus | "not_imported";
-  completedAt: IsoDateTime | null;
-  message: string | null;
+  activeRun: Pick<ImportRun, "id" | "startedAt"> | null;
+  lastSuccessfulStartedAt: IsoDateTime | null;
+  latestAttempt: Pick<
+    ImportRun,
+    | "id"
+    | "trigger"
+    | "status"
+    | "startedAt"
+    | "completedAt"
+    | "errorMessage"
+  > | null;
+  consecutiveFailureCount: number;
 }
 
 export type PlayerBoxScoreStats = Omit<

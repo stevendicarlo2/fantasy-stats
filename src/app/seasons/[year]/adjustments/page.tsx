@@ -13,6 +13,7 @@ import {
   type ExistingAdjustment,
 } from "../../../adjustment-manager";
 import { SeasonYearSelector } from "../season-year-selector";
+import { DataSyncIndicator } from "../../../data-sync-indicator";
 
 interface AdjustmentPageProps {
   params: Promise<{ year: string }>;
@@ -31,11 +32,9 @@ async function loadAdjustmentPage(yearValue: string) {
 
   try {
     const runtime = await getWebRuntime();
-    const [stats, adjustments, availableYears] = await Promise.all([
-      runtime.seasonStatsService.getSeasonStats(year),
-      runtime.matchupAdjustmentService.listSeasonAdjustments(year),
-      runtime.seasonStatsService.getAvailableSeasonYears(),
-    ]);
+    const result =
+      await runtime.seasonDataQueryService.getAdjustmentPage(year);
+    const { stats, adjustments, availableYears } = result.data;
 
     if (!stats || !adjustments) {
       return { status: "missing" as const };
@@ -118,6 +117,7 @@ async function loadAdjustmentPage(yearValue: string) {
       matchups,
       existingAdjustments,
       availableYears,
+      sync: result.sync,
     };
   } catch (error) {
     return {
@@ -178,6 +178,12 @@ export default async function AdjustmentPage({
           />
         </div>
       </header>
+      <DataSyncIndicator
+        key={`${pageData.sync.revision}:${pageData.sync.isSyncing}`}
+        initialState={pageData.sync}
+        seasonYear={pageData.year}
+        view="adjustments"
+      />
       <AdjustmentManager
         seasonYear={pageData.year}
         matchups={pageData.matchups}

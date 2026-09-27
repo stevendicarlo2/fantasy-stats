@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 
 import type { ImportDataset, ImportRunStatus } from "@/domain/types";
 
-import { runSeasonDatasetAction } from "./actions";
+import {
+  datasetDefinitions as datasets,
+  initialDatasetProgress as initialProgress,
+  runDatasetBatch,
+} from "./dataset-sync-client";
 
 interface ImportFormProps {
   importedYears: number[];
@@ -18,25 +22,6 @@ type ProgressStatus =
   | "running"
   | "skipped"
   | ImportRunStatus;
-
-const datasets = [
-  { id: "core", label: "Core season data" },
-  { id: "rosters", label: "Weekly rosters and projections" },
-  { id: "transactions", label: "Draft picks and transactions" },
-  { id: "player_stats", label: "NFL games and player statistics" },
-] as const satisfies ReadonlyArray<{
-  id: ImportDataset;
-  label: string;
-}>;
-
-function initialProgress(): Record<ImportDataset, ProgressStatus> {
-  return {
-    core: "idle",
-    rosters: "idle",
-    transactions: "idle",
-    player_stats: "idle",
-  };
-}
 
 function progressLabel(
   status: ProgressStatus,
@@ -60,7 +45,10 @@ function progressLabel(
 
 export function ImportForm({ importedYears, years }: ImportFormProps) {
   const router = useRouter();
-  const [year, setYear] = useState(years[0]);
+  const availableYears = years.filter(
+    (candidate) => !importedYears.includes(candidate),
+  );
+  const [year, setYear] = useState(availableYears[0]);
   const [selected, setSelected] = useState<ImportDataset[]>(
     datasets.map(({ id }) => id),
   );
@@ -68,7 +56,7 @@ export function ImportForm({ importedYears, years }: ImportFormProps) {
   const [message, setMessage] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [datasetsExpanded, setDatasetsExpanded] = useState(false);
-  const isNewSeason = !importedYears.includes(year);
+  const isNewSeason = true;
   const selectionSummary =
     selected.length === datasets.length
       ? "All datasets"
@@ -104,7 +92,6 @@ export function ImportForm({ importedYears, years }: ImportFormProps) {
       return;
     }
 
-    const operation = isNewSeason ? "import" : "refresh";
     const selectedSet = new Set(selected);
     const nextProgress = initialProgress();
     for (const { id } of datasets) {
@@ -115,64 +102,19 @@ export function ImportForm({ importedYears, years }: ImportFormProps) {
     setMessage("");
     setSyncing(true);
     setDatasetsExpanded(true);
-    const failedDatasets: ImportDataset[] = [];
-
-    for (const { id } of datasets) {
-      if (!selectedSet.has(id)) {
-        continue;
-      }
-
-      setProgress((current) => ({ ...current, [id]: "running" }));
-
-      try {
-        const result = await runSeasonDatasetAction({
-          dataset: id,
-          operation,
-          year,
-        });
-        setProgress((current) => ({
-          ...current,
-          [id]: result.status,
-        }));
-
-        if (result.status === "failed") {
-          failedDatasets.push(id);
-          if (id === "core") {
-            setProgress((current) => {
-              const stopped = { ...current };
-              for (const { id: remainingId } of datasets) {
-                if (
-                  selectedSet.has(remainingId) &&
-                  stopped[remainingId] === "waiting"
-                ) {
-                  stopped[remainingId] = "skipped";
-                }
-              }
-              return stopped;
-            });
-            break;
-          }
-        }
-      } catch {
-        failedDatasets.push(id);
-        setProgress((current) => ({ ...current, [id]: "failed" }));
-        if (id === "core") {
-          setProgress((current) => {
-            const stopped = { ...current };
-            for (const { id: remainingId } of datasets) {
-              if (
-                selectedSet.has(remainingId) &&
-                stopped[remainingId] === "waiting"
-              ) {
-                stopped[remainingId] = "skipped";
-              }
-            }
-            return stopped;
-          });
-          break;
-        }
-      }
-    }
+    const outcomes = await runDatasetBatch(
+      year,
+      selected,
+      "import",
+      (dataset, status) =>
+        setProgress((current) => ({ ...current, [dataset]: status })),
+    );
+    const failedDatasets = [...outcomes].filter(
+      ([, status]) =>
+        status === "failed" ||
+        status === "unavailable" ||
+        status === "skipped",
+    );
 
     setMessage(
       failedDatasets.length === 0
@@ -181,6 +123,10 @@ export function ImportForm({ importedYears, years }: ImportFormProps) {
     );
     setSyncing(false);
     router.refresh();
+  }
+
+  if (availableYears.length === 0) {
+    return <p>Every configured season has been imported.</p>;
   }
 
   return (
@@ -194,7 +140,7 @@ export function ImportForm({ importedYears, years }: ImportFormProps) {
         disabled={syncing}
         required
       >
-        {years.map((year) => (
+        {availableYears.map((year) => (
           <option key={year} value={year}>
             {year}
           </option>

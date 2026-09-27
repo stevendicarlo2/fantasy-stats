@@ -15,6 +15,7 @@ vi.mock("next/navigation", () => ({
   notFound: vi.fn(() => {
     throw new Error("not found");
   }),
+  useRouter: () => ({ refresh: vi.fn() }),
 }));
 
 vi.mock("@/server/runtime/web-runtime", () => ({
@@ -26,8 +27,10 @@ afterEach(cleanup);
 describe("MatchupRosterPage", () => {
   it("renders a side-by-side comparison with starters, bench, and IR", async () => {
     vi.mocked(getWebRuntime).mockResolvedValue({
-      matchupRosterService: {
-        getMatchupRoster: vi.fn().mockResolvedValue({
+      seasonDataQueryService: {
+        getMatchupPage: vi.fn().mockResolvedValue({
+          sync: { isSyncing: false, revision: "", pollAfterMs: null },
+          data: {
           matchupId: "10000000-0000-4000-8000-000000000001",
           seasonYear: 2025,
           matchupPeriod: 15,
@@ -129,6 +132,7 @@ describe("MatchupRosterPage", () => {
               teams: [],
             },
           ],
+          },
         }),
       },
     } as unknown as Awaited<ReturnType<typeof getWebRuntime>>);
@@ -162,8 +166,10 @@ describe("MatchupRosterPage", () => {
 
   it("shows a separate faded projected column when toggled client-side, without replacing actual scores", async () => {
     vi.mocked(getWebRuntime).mockResolvedValue({
-      matchupRosterService: {
-        getMatchupRoster: vi.fn().mockResolvedValue({
+      seasonDataQueryService: {
+        getMatchupPage: vi.fn().mockResolvedValue({
+          sync: { isSyncing: false, revision: "", pollAfterMs: null },
+          data: {
           matchupId: "10000000-0000-4000-8000-000000000001",
           seasonYear: 2025,
           matchupPeriod: 15,
@@ -235,6 +241,7 @@ describe("MatchupRosterPage", () => {
               ],
             },
           ],
+          },
         }),
       },
     } as unknown as Awaited<ReturnType<typeof getWebRuntime>>);
@@ -273,13 +280,16 @@ describe("MatchupRosterPage", () => {
 
   it("shows an unavailable message when no roster data exists for the period", async () => {
     vi.mocked(getWebRuntime).mockResolvedValue({
-      matchupRosterService: {
-        getMatchupRoster: vi.fn().mockResolvedValue({
+      seasonDataQueryService: {
+        getMatchupPage: vi.fn().mockResolvedValue({
+          sync: { isSyncing: false, revision: "", pollAfterMs: null },
+          data: {
           matchupId: "10000000-0000-4000-8000-000000000001",
           seasonYear: 2025,
           matchupPeriod: 1,
           phase: "regular",
           periods: [{ scoringPeriod: 1, teams: [] }],
+          },
         }),
       },
     } as unknown as Awaited<ReturnType<typeof getWebRuntime>>);

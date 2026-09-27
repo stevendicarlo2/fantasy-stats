@@ -1,6 +1,7 @@
 import { loadEnvConfig } from "@next/env";
 
 import { SeasonImportService } from "@/application/services/season-import-service";
+import { DataSyncCoordinator } from "@/application/services/data-sync-coordinator";
 import { EspnFantasySource } from "@/server/adapters/fantasy/espn/espn-source";
 import {
   parseDatabaseEnvironment,
@@ -58,12 +59,47 @@ async function main() {
         espnS2: espnEnvironment.ESPN_S2,
         swid: espnEnvironment.ESPN_SWID,
       });
+      const importService = new SeasonImportService({ database, source });
+      const coordinator = new DataSyncCoordinator({
+        database,
+        importService: {
+          providerForDataset() {
+            return importService.provider;
+          },
+          prepareDataset(year, dataset, operation) {
+            if (dataset !== "core") {
+              throw new Error("The season CLI only supports core data");
+            }
+            return importService.prepareOperation(operation, year);
+          },
+          executeStartedRun(run) {
+            return importService.executeStartedRun(run);
+          },
+        },
+      });
 
       return {
         storageKind: storage.kind,
         persistent: storage.persistent,
         database,
-        service: new SeasonImportService({ database, source }),
+        service: {
+          importSeason(year: number) {
+            return coordinator.runDatasetAndWait({
+              year,
+              dataset: "core",
+              operation: "import",
+              trigger: "cli",
+            });
+          },
+          refreshSeason(year: number) {
+            return coordinator.runDatasetAndWait({
+              year,
+              dataset: "core",
+              operation: "refresh",
+              trigger: "cli",
+            });
+          },
+        },
         close() {
           storage.close();
         },

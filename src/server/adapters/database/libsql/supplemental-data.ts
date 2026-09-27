@@ -12,7 +12,6 @@ import {
   transactionImportSnapshotSchema,
 } from "@/domain/schemas";
 import type {
-  ImportDataset,
   MatchupRosterDetail,
   MatchupRosterPlayer,
   MatchupRosterPlayerGame,
@@ -116,9 +115,19 @@ const datasetStatusRowSchema = z.object({
     "transactions",
     "player_stats",
   ]),
-  status: z.enum(["running", "succeeded", "failed", "unavailable"]),
+  id: z.string().nullable(),
+  trigger: z
+    .enum(["legacy", "manual", "automatic", "cli"])
+    .nullable(),
+  status: z
+    .enum(["running", "succeeded", "failed", "unavailable"])
+    .nullable(),
+  startedAt: z.string().nullable(),
   completedAt: z.string().nullable(),
   message: z.string().nullable(),
+  activeLeaseRunId: z.string().nullable(),
+  lastSuccessfulStartedAt: z.string().nullable(),
+  consecutiveFailureCount: z.number().int().nonnegative(),
 });
 
 function statementsBatch(
@@ -563,8 +572,11 @@ export async function listSeasonDatasetStatuses(
     sql: `
       WITH ranked AS (
         SELECT
+          id,
           dataset,
+          trigger_source AS trigger,
           status,
+          started_at AS startedAt,
           completed_at AS completedAt,
           error_message AS message,
           ROW_NUMBER() OVER (
@@ -573,35 +585,86 @@ export async function listSeasonDatasetStatuses(
           ) AS row_number
         FROM import_runs
         WHERE season_year = ?
+      ),
+      latest_success AS (
+        SELECT
+          dataset,
+          MAX(started_at) AS lastSuccessfulStartedAt
+        FROM import_runs
+        WHERE season_year = ? AND status = 'succeeded'
+        GROUP BY dataset
       )
-      SELECT dataset, status, completedAt, message
-      FROM ranked
-      WHERE row_number = 1
+      SELECT
+        datasets.dataset,
+        latest.id,
+        latest.trigger,
+        latest.status,
+        latest.startedAt,
+        latest.completedAt,
+        latest.message,
+        active_lease.import_run_id AS activeLeaseRunId,
+        latest_success.lastSuccessfulStartedAt,
+        (
+          SELECT COUNT(*)
+          FROM import_runs AS failures
+          WHERE failures.season_year = ?
+            AND failures.dataset = datasets.dataset
+            AND failures.status = 'failed'
+            AND (
+              latest_success.lastSuccessfulStartedAt IS NULL
+              OR failures.started_at >
+                latest_success.lastSuccessfulStartedAt
+            )
+        ) AS consecutiveFailureCount
+      FROM (
+        SELECT 'core' AS dataset
+        UNION ALL SELECT 'rosters'
+        UNION ALL SELECT 'transactions'
+        UNION ALL SELECT 'player_stats'
+      ) AS datasets
+      LEFT JOIN ranked AS latest
+        ON latest.dataset = datasets.dataset
+        AND latest.row_number = 1
+      LEFT JOIN latest_success
+        ON latest_success.dataset = datasets.dataset
+      LEFT JOIN sync_leases AS active_lease
+        ON active_lease.import_run_id = latest.id
+        AND julianday(active_lease.expires_at) > julianday('now')
     `,
-    args: [seasonYear],
+    args: [seasonYear, seasonYear, seasonYear],
   });
-  const byDataset = new Map(
-    result.rows.map((row) => {
-      const parsed = datasetStatusRowSchema.parse(row);
-      return [parsed.dataset, parsed] as const;
-    }),
-  );
-  const datasets: ImportDataset[] = [
-    "core",
-    "rosters",
-    "transactions",
-    "player_stats",
-  ];
+  return result.rows.map((row): SeasonDatasetStatus => {
+    const parsed = datasetStatusRowSchema.parse(row);
+    const latestAttempt =
+      parsed.id &&
+      parsed.trigger &&
+      parsed.status &&
+      parsed.startedAt
+        ? {
+            id: parsed.id,
+            trigger: parsed.trigger,
+            status: parsed.status,
+            startedAt: parsed.startedAt,
+            completedAt: parsed.completedAt,
+            errorMessage: parsed.message,
+          }
+        : null;
 
-  return datasets.map(
-    (dataset): SeasonDatasetStatus =>
-      byDataset.get(dataset) ?? {
-        dataset,
-        status: "not_imported",
-        completedAt: null,
-        message: null,
-      },
-  );
+    return {
+      dataset: parsed.dataset,
+      activeRun:
+        latestAttempt?.status === "running" &&
+        parsed.activeLeaseRunId === latestAttempt.id
+          ? {
+              id: latestAttempt.id,
+              startedAt: latestAttempt.startedAt,
+            }
+          : null,
+      lastSuccessfulStartedAt: parsed.lastSuccessfulStartedAt,
+      latestAttempt,
+      consecutiveFailureCount: parsed.consecutiveFailureCount,
+    };
+  });
 }
 
 function buildRosterPlayerGame(

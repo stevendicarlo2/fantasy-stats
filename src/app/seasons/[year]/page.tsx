@@ -9,6 +9,7 @@ import { getWebRuntime } from "@/server/runtime/web-runtime";
 
 import { SeasonAnalyticsDashboard } from "./season-analytics-dashboard";
 import { SeasonYearSelector } from "./season-year-selector";
+import { DataSyncIndicator } from "../../data-sync-indicator";
 
 interface SeasonPageProps {
   params: Promise<{ year: string }>;
@@ -31,10 +32,8 @@ async function loadSeason(yearValue: string) {
 
   try {
     const runtime = await getWebRuntime();
-    const [stats, availableYears] = await Promise.all([
-      runtime.seasonStatsService.getSeasonStats(year),
-      runtime.seasonStatsService.getAvailableSeasonYears(),
-    ]);
+    const result = await runtime.seasonDataQueryService.getSeasonPage(year);
+    const { stats, availableYears } = result.data;
 
     if (!stats) {
       return { status: "missing" as const };
@@ -44,6 +43,7 @@ async function loadSeason(yearValue: string) {
       status: "ready" as const,
       stats,
       availableYears,
+      sync: result.sync,
     };
   } catch (error) {
     return {
@@ -117,6 +117,12 @@ export default async function SeasonPage({ params }: SeasonPageProps) {
           </Link>
         </div>
       </header>
+      <DataSyncIndicator
+        key={`${pageData.sync.revision}:${pageData.sync.isSyncing}`}
+        initialState={pageData.sync}
+        seasonYear={stats.year}
+        view="season"
+      />
 
       <SeasonAnalyticsDashboard
         records={stats.analytics}

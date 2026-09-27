@@ -49,6 +49,7 @@ function createSnapshot(): SeasonImportSnapshot {
       playoffTeamCount: 1,
       regularSeasonStartWeek: 1,
       regularSeasonEndWeek: 14,
+      isActive: true,
     },
     franchises: [
       { id: ids.home, leagueId: ids.league, ownerName: "Owner One" },
@@ -163,6 +164,7 @@ describe("libSQL database provider", () => {
         "0007_season_playoff_team_count.sql",
         "0008_matchup_roster_data.sql",
         "0009_playoff_elimination_phases.sql",
+        "0010_automatic_data_sync.sql",
       ],
     });
     await expect(provider.runMigrations()).resolves.toEqual({
@@ -197,6 +199,138 @@ describe("libSQL database provider", () => {
     ]);
     expect(storedSnapshot?.sourceMappings).toHaveLength(5);
     await expect(provider.listSourceMappings("espn")).resolves.toHaveLength(5);
+    await expect(provider.getHighestActiveSeasonYear()).resolves.toBe(2025);
+  });
+
+  it("acquires, joins, renews, releases, and recovers dataset leases", async () => {
+    await provider.runMigrations();
+    const first = await provider.acquireImportRun({
+      id: ids.importRun,
+      provider: "espn",
+      operation: "refresh",
+      trigger: "automatic",
+      dataset: "core",
+      seasonYear: 2025,
+      startedAt: "2026-09-27T20:00:00Z",
+      abandonedAt: "2026-09-27T20:00:00Z",
+      ownerToken: "owner-one",
+      leaseExpiresAt: "2026-09-27T20:05:00Z",
+    });
+    const joined = await provider.acquireImportRun({
+      id: ids.refreshRun,
+      provider: "espn",
+      operation: "refresh",
+      trigger: "manual",
+      dataset: "core",
+      seasonYear: 2025,
+      startedAt: "2026-09-27T20:01:00Z",
+      abandonedAt: "2026-09-27T20:01:00Z",
+      ownerToken: "owner-two",
+      leaseExpiresAt: "2026-09-27T20:06:00Z",
+    });
+
+    expect(first).toMatchObject({ acquired: true });
+    expect(joined).toMatchObject({
+      acquired: false,
+      run: { id: ids.importRun },
+    });
+    await expect(
+      provider.renewImportLease({
+        importRunId: ids.importRun,
+        ownerToken: "wrong-owner",
+        heartbeatAt: "2026-09-27T20:02:00Z",
+        expiresAt: "2026-09-27T20:07:00Z",
+      }),
+    ).resolves.toBe(false);
+    await expect(
+      provider.renewImportLease({
+        importRunId: ids.importRun,
+        ownerToken: "owner-one",
+        heartbeatAt: "2026-09-27T20:02:00Z",
+        expiresAt: "2026-09-27T20:07:00Z",
+      }),
+    ).resolves.toBe(true);
+
+    await provider.failImportRun({
+      importRunId: ids.importRun,
+      completedAt: "2026-09-27T20:03:00Z",
+      errorMessage: "Synthetic failure",
+    });
+    await expect(
+      provider.acquireImportRun({
+        id: ids.refreshRun,
+        provider: "espn",
+        operation: "refresh",
+        trigger: "manual",
+        dataset: "core",
+        seasonYear: 2025,
+        startedAt: "2026-09-27T20:04:00Z",
+        abandonedAt: "2026-09-27T20:04:00Z",
+        ownerToken: "owner-two",
+        leaseExpiresAt: "2026-09-27T20:09:00Z",
+      }),
+    ).resolves.toMatchObject({ acquired: true });
+    await expect(
+      provider.acquireImportRun({
+        id: ids.failedRun,
+        provider: "espn",
+        operation: "refresh",
+        trigger: "automatic",
+        dataset: "core",
+        seasonYear: 2025,
+        startedAt: "2026-09-27T20:10:00Z",
+        abandonedAt: "2026-09-27T20:10:00Z",
+        ownerToken: "owner-three",
+        leaseExpiresAt: "2026-09-27T20:15:00Z",
+      }),
+    ).resolves.toMatchObject({ acquired: true });
+    await expect(provider.getImportRun(ids.refreshRun)).resolves.toMatchObject({
+      status: "failed",
+      errorMessage: "Sync lease expired before the import completed",
+    });
+  });
+
+  it("reports a running dataset only while its lease is active", async () => {
+    await provider.runMigrations();
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 5 * 60_000).toISOString();
+    await provider.acquireImportRun({
+      id: ids.importRun,
+      provider: "espn",
+      operation: "refresh",
+      trigger: "automatic",
+      dataset: "core",
+      seasonYear: 2025,
+      startedAt: now.toISOString(),
+      abandonedAt: now.toISOString(),
+      ownerToken: "owner-one",
+      leaseExpiresAt: expiresAt,
+    });
+
+    await expect(
+      provider.listSeasonDatasetStatuses(2025),
+    ).resolves.toContainEqual(
+      expect.objectContaining({
+        dataset: "core",
+        activeRun: expect.objectContaining({ id: ids.importRun }),
+      }),
+    );
+
+    await provider.renewImportLease({
+      importRunId: ids.importRun,
+      ownerToken: "owner-one",
+      heartbeatAt: "2000-01-01T00:00:00.000Z",
+      expiresAt: "2000-01-01T00:01:00.000Z",
+    });
+
+    await expect(
+      provider.listSeasonDatasetStatuses(2025),
+    ).resolves.toContainEqual(
+      expect.objectContaining({
+        dataset: "core",
+        activeRun: null,
+      }),
+    );
   });
 
   it("persists independent roster, transaction, and player-stat datasets", async () => {
@@ -538,15 +672,21 @@ describe("libSQL database provider", () => {
         expect.arrayContaining([
           expect.objectContaining({
             dataset: "rosters",
-            status: "succeeded",
+            latestAttempt: expect.objectContaining({
+              status: "succeeded",
+            }),
           }),
           expect.objectContaining({
             dataset: "transactions",
-            status: "succeeded",
+            latestAttempt: expect.objectContaining({
+              status: "succeeded",
+            }),
           }),
           expect.objectContaining({
             dataset: "player_stats",
-            status: "succeeded",
+            latestAttempt: expect.objectContaining({
+              status: "succeeded",
+            }),
           }),
         ]),
       );

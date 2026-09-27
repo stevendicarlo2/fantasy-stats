@@ -12,6 +12,8 @@ import { z } from "zod";
 
 import { SafeOperationalError } from "@/application/errors";
 import type {
+  AcquireImportRunInput,
+  AcquireImportRunResult,
   CommitSeasonImportInput,
   CommitPlayerStatsImportInput,
   CommitRosterImportInput,
@@ -22,6 +24,7 @@ import type {
   MigrationResult,
   ReadOnlyQuery,
   ReadOnlyQueryResult,
+  RenewImportLeaseInput,
   StartImportRunInput,
 } from "@/application/ports/database-provider";
 import {
@@ -109,6 +112,7 @@ async function selectImportRun(
         id,
         provider,
         operation,
+        trigger_source AS trigger,
         dataset,
         season_year AS seasonYear,
         status,
@@ -130,6 +134,16 @@ async function rollbackOpenTransaction(transaction: Transaction) {
   if (!transaction.closed) {
     await transaction.rollback();
   }
+}
+
+async function releaseImportLease(
+  transaction: Transaction,
+  importRunId: CanonicalId,
+) {
+  await transaction.execute({
+    sql: "DELETE FROM sync_leases WHERE import_run_id = ?",
+    args: [importRunId],
+  });
 }
 
 async function runWriteTransaction<T>(
@@ -259,16 +273,18 @@ async function upsertSeasonSnapshot(
           team_count,
           playoff_team_count,
           regular_season_start_week,
-          regular_season_end_week
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+            regular_season_end_week,
+            is_active
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           league_id = excluded.league_id,
           year = excluded.year,
           team_count = excluded.team_count,
           playoff_team_count = excluded.playoff_team_count,
           regular_season_start_week = excluded.regular_season_start_week,
-          regular_season_end_week = excluded.regular_season_end_week
+          regular_season_end_week = excluded.regular_season_end_week,
+          is_active = excluded.is_active
       `,
       args: [
         snapshot.season.id,
@@ -278,6 +294,7 @@ async function upsertSeasonSnapshot(
         snapshot.season.playoffTeamCount,
         snapshot.season.regularSeasonStartWeek,
         snapshot.season.regularSeasonEndWeek,
+        snapshot.season.isActive ? 1 : 0,
       ],
     },
     ...snapshot.franchises.map((franchise) => ({
@@ -438,7 +455,8 @@ async function loadSeasonSnapshot(
         team_count AS teamCount,
         playoff_team_count AS playoffTeamCount,
         regular_season_start_week AS regularSeasonStartWeek,
-        regular_season_end_week AS regularSeasonEndWeek
+        regular_season_end_week AS regularSeasonEndWeek,
+        is_active AS isActive
       FROM seasons
       WHERE year = ?
     `,
@@ -449,9 +467,11 @@ async function loadSeasonSnapshot(
     return null;
   }
 
-  const season = seasonSchema.parse(
-    expectSingleRow(seasonResult.rows, "season"),
-  );
+  const seasonRow = expectSingleRow(seasonResult.rows, "season");
+  const season = seasonSchema.parse({
+    ...seasonRow,
+    isActive: seasonRow.isActive === 1,
+  });
   const leagueResult = await client.execute({
     sql: "SELECT id, name FROM leagues WHERE id = ?",
     args: [season.leagueId],
@@ -856,6 +876,7 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
           id,
           provider,
           operation,
+          trigger_source,
           dataset,
           season_year,
           status,
@@ -863,12 +884,13 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
           completed_at,
           error_message
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       args: [
         importRun.id,
         importRun.provider,
         importRun.operation,
+        importRun.trigger ?? "legacy",
         importRun.dataset ?? "core",
         importRun.seasonYear,
         importRun.status,
@@ -879,6 +901,148 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
     });
 
     return selectImportRun(this.client, importRun.id);
+  }
+
+  async acquireImportRun(
+    input: AcquireImportRunInput,
+  ): Promise<AcquireImportRunResult> {
+    return runWriteTransaction(this.client, async (transaction) => {
+      const existingLease = await transaction.execute({
+        sql: `
+          SELECT import_run_id AS importRunId, expires_at AS expiresAt
+          FROM sync_leases
+          WHERE season_year = ? AND dataset = ?
+        `,
+        args: [input.seasonYear, input.dataset ?? "core"],
+      });
+      const lease = existingLease.rows[0];
+
+      if (
+        lease &&
+        typeof lease.importRunId === "string" &&
+        typeof lease.expiresAt === "string" &&
+        lease.expiresAt > input.abandonedAt
+      ) {
+        return {
+          acquired: false,
+          run: await selectImportRun(transaction, lease.importRunId),
+        };
+      }
+
+      if (lease && typeof lease.importRunId === "string") {
+        await transaction.execute({
+          sql: `
+            UPDATE import_runs
+            SET
+              status = 'failed',
+              completed_at = ?,
+              error_message = ?
+            WHERE id = ? AND status = 'running'
+          `,
+          args: [
+            input.abandonedAt,
+            "Sync lease expired before the import completed",
+            lease.importRunId,
+          ],
+        });
+        await transaction.execute({
+          sql: `
+            DELETE FROM sync_leases
+            WHERE season_year = ? AND dataset = ?
+          `,
+          args: [input.seasonYear, input.dataset ?? "core"],
+        });
+      }
+
+      const importRun = importRunSchema.parse({
+        ...input,
+        dataset: input.dataset ?? "core",
+        status: "running",
+        completedAt: null,
+        errorMessage: null,
+      });
+      await transaction.execute({
+        sql: `
+          INSERT INTO import_runs (
+            id,
+            provider,
+            operation,
+            trigger_source,
+            dataset,
+            season_year,
+            status,
+            started_at,
+            completed_at,
+            error_message
+          )
+          VALUES (?, ?, ?, ?, ?, ?, 'running', ?, NULL, NULL)
+        `,
+        args: [
+          importRun.id,
+          importRun.provider,
+          importRun.operation,
+          importRun.trigger ?? "legacy",
+          importRun.dataset ?? "core",
+          importRun.seasonYear,
+          importRun.startedAt,
+        ],
+      });
+      await transaction.execute({
+        sql: `
+          INSERT INTO sync_leases (
+            season_year,
+            dataset,
+            import_run_id,
+            owner_token,
+            heartbeat_at,
+            expires_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?)
+        `,
+        args: [
+          importRun.seasonYear,
+          importRun.dataset ?? "core",
+          importRun.id,
+          input.ownerToken,
+          input.startedAt,
+          input.leaseExpiresAt,
+        ],
+      });
+
+      return {
+        acquired: true,
+        run: await selectImportRun(transaction, importRun.id),
+      };
+    });
+  }
+
+  async renewImportLease(input: RenewImportLeaseInput): Promise<boolean> {
+    const result = await this.client.execute({
+      sql: `
+        UPDATE sync_leases
+        SET heartbeat_at = ?, expires_at = ?
+        WHERE import_run_id = ? AND owner_token = ?
+      `,
+      args: [
+        input.heartbeatAt,
+        input.expiresAt,
+        input.importRunId,
+        input.ownerToken,
+      ],
+    });
+
+    return result.rowsAffected === 1;
+  }
+
+  async getImportRun(importRunId: CanonicalId): Promise<ImportRun | null> {
+    const result = await this.client.execute({
+      sql: "SELECT id FROM import_runs WHERE id = ?",
+      args: [importRunId],
+    });
+
+    return result.rows.length === 0
+      ? null
+      : selectImportRun(this.client, importRunId);
   }
 
   async commitSeasonImport(
@@ -915,6 +1079,7 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
         );
       }
 
+      await releaseImportLease(transaction, input.importRunId);
       return selectImportRun(transaction, input.importRunId);
     });
   }
@@ -986,6 +1151,7 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
         );
       }
 
+      await releaseImportLease(transaction, input.importRunId);
       return selectImportRun(transaction, input.importRunId);
     });
   }
@@ -1029,6 +1195,7 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
         );
       }
 
+      await releaseImportLease(transaction, input.importRunId);
       return selectImportRun(transaction, input.importRunId);
     });
   }
@@ -1046,6 +1213,7 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
           id,
           provider,
           operation,
+          trigger_source AS trigger,
           dataset,
           season_year AS seasonYear,
           status,
@@ -1074,6 +1242,35 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
     const result = await this.client.execute({
       sql: "SELECT id FROM seasons WHERE year = ? LIMIT 1",
       args: [seasonYear],
+    });
+
+    return result.rows.length === 1;
+  }
+
+  async getHighestActiveSeasonYear(): Promise<number | null> {
+    const result = await this.client.execute(
+      "SELECT MAX(year) AS year FROM seasons WHERE is_active = 1",
+    );
+    const year = result.rows[0]?.year;
+    return typeof year === "number" ? year : null;
+  }
+
+  async hasLiveNflGame(
+    seasonYear: number,
+    startsAfter: string,
+    startsBefore: string,
+  ): Promise<boolean> {
+    const result = await this.client.execute({
+      sql: `
+        SELECT 1
+        FROM nfl_games
+        WHERE season_year = ?
+          AND completed = 0
+          AND starts_at > ?
+          AND starts_at <= ?
+        LIMIT 1
+      `,
+      args: [seasonYear, startsAfter, startsBefore],
     });
 
     return result.rows.length === 1;
@@ -1328,6 +1525,7 @@ class LibSqlDatabaseProvider implements CloseableDatabaseProvider {
         );
       }
 
+      await releaseImportLease(transaction, importRunId);
       return selectImportRun(transaction, importRunId);
     });
   }

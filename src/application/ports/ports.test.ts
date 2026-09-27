@@ -31,6 +31,24 @@ const databaseProviderContract = {
       errorMessage: null,
     };
   },
+  async acquireImportRun(input) {
+    return {
+      acquired: true,
+      run: {
+        ...input,
+        trigger: input.trigger ?? "legacy",
+        status: "running" as const,
+        completedAt: null,
+        errorMessage: null,
+      },
+    };
+  },
+  async renewImportLease() {
+    return true;
+  },
+  async getImportRun() {
+    return null;
+  },
   async commitSeasonImport(input) {
     return {
       id: input.importRunId,
@@ -112,6 +130,12 @@ const databaseProviderContract = {
   },
   async listSeasonDatasetStatuses() {
     return [];
+  },
+  async getHighestActiveSeasonYear() {
+    return null;
+  },
+  async hasLiveNflGame() {
+    return false;
   },
   async listImportedSeasonYears() {
     return [];

@@ -52,9 +52,10 @@ npm run import-season --year=2017 --storage=local \
 ```
 
 Local mode persists migrations, canonical data, weekly rosters, players,
-drafts, transactions, NFL games, player-game statistics, audits, overrides,
-and scoring views. It is suitable for development and local inspection but is
-not the cross-computer source of truth.
+drafts, transactions, NFL games, player-game statistics, audits,
+synchronization leases, overrides, and scoring views. It is suitable for
+development and local inspection but is not the cross-computer source of
+truth.
 
 Season rows persist ESPN's configured playoff-team count. Global franchise
 name history and explicit season-specific team names are stored independently,
@@ -74,17 +75,18 @@ FANTASY_STATS_LOCAL_DATABASE_FILE=.data/fantasy-stats.db
 
 The database-file setting is optional and defaults to the path shown above.
 The dashboard applies migrations during server initialization, lists imported
-seasons and recent import runs, shows the latest state of each dataset, and
-provides season sync and targeted supplemental retry actions. Season sync
-allows any subset of core, roster, transaction/draft, and player-stat data.
-Core is required when importing a new season. Selected datasets run in
-dependency order with live per-dataset progress. The dataset selector is
-collapsed by default and summarizes the current selection. Sync imports a
-season when it is new and refreshes it when it already exists.
+seasons and recent import runs, shows active work, last successful
+synchronization, and the latest dataset error, and provides Refresh all and
+per-dataset controls. The top form imports new seasons only. Selected datasets
+run in dependency order with live per-dataset progress; core is required for a
+new season.
 Imported season links show cumulative regular-season ANP qualification
 standings and weekly effective-score, NP, head-to-head bonus, and ANP results.
 Each matchup links to weekly roster detail with actual and projected fantasy
 points. Multi-week matchups expose one roster view per scoring period.
+
+See [Automatic Data Synchronization](automatic-data-sync.md) for freshness,
+live-game polling, retry, and database-global lease behavior.
 
 ## Turso storage
 
@@ -124,5 +126,7 @@ this.
 
 All modes implement the application-owned `DatabaseProvider` interface.
 Application services and ESPN ingestion do not know which provider is active.
-Unsupported dummy operations fail explicitly rather than returning
+The libSQL and dummy providers both implement synchronization status and lease
+operations so coordination can be tested without provider-specific application
+logic. Unsupported dummy operations fail explicitly rather than returning
 success-shaped placeholder results.

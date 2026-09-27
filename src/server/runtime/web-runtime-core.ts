@@ -2,9 +2,11 @@ import { SafeOperationalError } from "@/application/errors";
 import { ImportDashboardService } from "@/application/services/import-dashboard-service";
 import { MatchupRosterService } from "@/application/services/matchup-roster-service";
 import { MatchupAdjustmentService } from "@/application/services/matchup-adjustment-service";
+import { DataSyncCoordinator } from "@/application/services/data-sync-coordinator";
 import { SeasonDataImportService } from "@/application/services/season-data-import-service";
 import { SeasonImportService } from "@/application/services/season-import-service";
 import { SeasonStatsService } from "@/application/services/season-stats-service";
+import { SeasonDataQueryService } from "@/application/services/season-data-query-service";
 import { SupplementalImportService } from "@/application/services/supplemental-import-service";
 import { SqlConsoleService } from "@/application/services/sql-console-service";
 import { SqlQueryAssistantService } from "@/application/services/sql-query-assistant-service";
@@ -31,6 +33,8 @@ export interface WebRuntime {
   seasonDataImportService: SeasonDataImportService;
   dashboardService: ImportDashboardService;
   seasonStatsService: SeasonStatsService;
+  dataSyncCoordinator: DataSyncCoordinator;
+  seasonDataQueryService: SeasonDataQueryService;
   matchupRosterService: MatchupRosterService;
   matchupAdjustmentService: MatchupAdjustmentService;
   sqlConsoleService: SqlConsoleService;
@@ -108,6 +112,19 @@ export async function createWebRuntime(
     transactionSource: source,
     nflSource: new EspnNflSource(),
   });
+  const seasonDataImportService = new SeasonDataImportService(
+    importService,
+    supplementalImportService,
+  );
+  const dataSyncCoordinator = new DataSyncCoordinator({
+    database: storage.database,
+    importService: seasonDataImportService,
+  });
+  const seasonStatsService = new SeasonStatsService(storage.database);
+  const matchupRosterService = new MatchupRosterService(storage.database);
+  const matchupAdjustmentService = new MatchupAdjustmentService({
+    database: storage.database,
+  });
 
   return {
     storage,
@@ -116,16 +133,18 @@ export async function createWebRuntime(
     // is already importable well before the year ends.
     latestSeason: new Date().getFullYear(),
     importService,
-    seasonDataImportService: new SeasonDataImportService(
-      importService,
-      supplementalImportService,
-    ),
+    seasonDataImportService,
     dashboardService: new ImportDashboardService(storage.database),
-    seasonStatsService: new SeasonStatsService(storage.database),
-    matchupRosterService: new MatchupRosterService(storage.database),
-    matchupAdjustmentService: new MatchupAdjustmentService({
-      database: storage.database,
-    }),
+    seasonStatsService,
+    dataSyncCoordinator,
+    seasonDataQueryService: new SeasonDataQueryService(
+      dataSyncCoordinator,
+      seasonStatsService,
+      matchupRosterService,
+      matchupAdjustmentService,
+    ),
+    matchupRosterService,
+    matchupAdjustmentService,
     sqlConsoleService,
     sqlQueryAssistantService: new SqlQueryAssistantService(
       new CopilotCliSqlQueryGenerator(process.cwd()),

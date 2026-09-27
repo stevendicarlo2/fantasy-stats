@@ -31,6 +31,7 @@ function createSnapshot(): SeasonImportSnapshot {
       playoffTeamCount: 1,
       regularSeasonStartWeek: 1,
       regularSeasonEndWeek: 14,
+      isActive: true,
     },
     franchises: [
       { id: ids.home, leagueId: ids.league, ownerName: "Owner One" },

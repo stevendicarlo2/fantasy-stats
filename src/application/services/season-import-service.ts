@@ -64,6 +64,10 @@ export class SeasonImportService {
     this.now = options.now ?? (() => new Date());
   }
 
+  get provider() {
+    return this.options.source.provider;
+  }
+
   importSeason(year: number): Promise<ImportRun> {
     return this.execute("import", year);
   }
@@ -96,40 +100,56 @@ export class SeasonImportService {
     year: number,
   ): Promise<ImportRun> {
     const importRunId = this.createId();
-    await this.options.database.startImportRun({
+    const run = await this.options.database.startImportRun({
       id: importRunId,
       provider: this.options.source.provider,
       operation,
+      trigger: "manual",
       dataset: "core",
       seasonYear: year,
       startedAt: this.now().toISOString(),
     });
+
+    return this.executeStartedRun(run);
+  }
+
+  async prepareOperation(operation: ImportOperation, year: number) {
+    validateSeasonYear(year);
+    await this.assertOperationPrecondition(operation, year);
+  }
+
+  async executeStartedRun(run: ImportRun | null): Promise<ImportRun> {
+    if (!run || run.status !== "running" || run.dataset !== "core") {
+      throw new SafeOperationalError(
+        "A running core import is required",
+      );
+    }
 
     try {
       const knownMappings = await this.options.database.listSourceMappings(
         this.options.source.provider,
       );
       const snapshot = await this.options.source.fetchSeason({
-        year,
+        year: run.seasonYear,
         knownMappings,
       });
 
       return await this.options.database.commitSeasonImport({
-        importRunId,
+        importRunId: run.id,
         snapshot,
         completedAt: this.now().toISOString(),
       });
     } catch (operationError) {
       try {
         await this.options.database.failImportRun({
-          importRunId,
+          importRunId: run.id,
           completedAt: this.now().toISOString(),
           errorMessage: safeAuditMessage(operationError),
         });
       } catch (auditError) {
         throw new AggregateError(
           [operationError, auditError],
-          `Season ${year} ${operation} failed and its audit record could not be updated`,
+          `Season ${run.seasonYear} ${run.operation} failed and its audit record could not be updated`,
         );
       }
 

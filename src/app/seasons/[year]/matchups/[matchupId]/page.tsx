@@ -8,6 +8,7 @@ import { getWebRuntime } from "@/server/runtime/web-runtime";
 
 import { buildMatchupComparisonRows } from "./matchup-presentation";
 import { MatchupComparisonPanel } from "./matchup-comparison-panel";
+import { DataSyncIndicator } from "../../../../data-sync-indicator";
 
 interface MatchupRosterPageProps {
   params: Promise<{ year: string; matchupId: string }>;
@@ -18,17 +19,29 @@ async function loadMatchup(
   year: number,
   matchupId: string,
 ): Promise<
-  | { status: "ready"; matchup: MatchupRosterDetail | null }
+  | {
+      status: "ready";
+      matchup: MatchupRosterDetail | null;
+      sync: Awaited<
+        ReturnType<
+          Awaited<ReturnType<typeof getWebRuntime>>[
+            "dataSyncCoordinator"
+          ]["observeView"]
+        >
+      >;
+    }
   | { status: "error"; message: string }
 > {
   try {
     const runtime = await getWebRuntime();
+    const result = await runtime.seasonDataQueryService.getMatchupPage(
+      year,
+      matchupId,
+    );
     return {
       status: "ready",
-      matchup: await runtime.matchupRosterService.getMatchupRoster(
-        year,
-        matchupId,
-      ),
+      matchup: result.data,
+      sync: result.sync,
     };
   } catch (error) {
     return {
@@ -112,6 +125,12 @@ export default async function MatchupRosterPage({
         </div>
         <span className={`phase ${matchup.phase}`}>{matchup.phase}</span>
       </header>
+      <DataSyncIndicator
+        key={`${pageData.sync.revision}:${pageData.sync.isSyncing}`}
+        initialState={pageData.sync}
+        seasonYear={year}
+        view="matchup"
+      />
 
       {matchup.periods.length > 1 ? (
         <nav className="period-tabs" aria-label="Scoring period">

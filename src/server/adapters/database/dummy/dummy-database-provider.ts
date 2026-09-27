@@ -1,5 +1,7 @@
 import { SafeOperationalError } from "@/application/errors";
 import type {
+  AcquireImportRunInput,
+  AcquireImportRunResult,
   CommitSeasonImportInput,
   CommitPlayerStatsImportInput,
   CommitRosterImportInput,
@@ -9,6 +11,7 @@ import type {
   MarkImportUnavailableInput,
   ReadOnlyQuery,
   ReadOnlyQueryResult,
+  RenewImportLeaseInput,
   StartImportRunInput,
   WeeklyTeamResult,
 } from "@/application/ports/database-provider";
@@ -49,6 +52,15 @@ function copy<T>(value: T): T {
 export class DummyDatabaseProvider implements DatabaseProvider {
   private readonly snapshots = new Map<number, SeasonImportSnapshot>();
   private readonly importRuns = new Map<CanonicalId, ImportRun>();
+  private readonly syncLeases = new Map<
+    string,
+    {
+      importRunId: CanonicalId;
+      ownerToken: string;
+      heartbeatAt: string;
+      expiresAt: string;
+    }
+  >();
   private readonly rosterSnapshots = new Map<number, RosterImportSnapshot>();
   private readonly transactionSnapshots = new Map<
     number,
@@ -139,6 +151,7 @@ export class DummyDatabaseProvider implements DatabaseProvider {
 
     const importRun = importRunSchema.parse({
       ...input,
+      trigger: input.trigger ?? "legacy",
       dataset: input.dataset ?? "core",
       status: "running",
       completedAt: null,
@@ -146,6 +159,67 @@ export class DummyDatabaseProvider implements DatabaseProvider {
     });
     this.importRuns.set(importRun.id, importRun);
     return copy(importRun);
+  }
+
+  async acquireImportRun(
+    input: AcquireImportRunInput,
+  ): Promise<AcquireImportRunResult> {
+    const dataset = input.dataset ?? "core";
+    const key = `${input.seasonYear}:${dataset}`;
+    const existing = this.syncLeases.get(key);
+
+    if (existing && existing.expiresAt > input.abandonedAt) {
+      return {
+        acquired: false,
+        run: copy(this.requireImportRun(existing.importRunId)),
+      };
+    }
+
+    if (existing) {
+      const abandoned = this.importRuns.get(existing.importRunId);
+      if (abandoned?.status === "running") {
+        this.importRuns.set(abandoned.id, {
+          ...abandoned,
+          status: "failed",
+          completedAt: input.abandonedAt,
+          errorMessage: "Sync lease expired before the import completed",
+        });
+      }
+      this.syncLeases.delete(key);
+    }
+
+    const run = await this.startImportRun(input);
+    this.syncLeases.set(key, {
+      importRunId: run.id,
+      ownerToken: input.ownerToken,
+      heartbeatAt: input.startedAt,
+      expiresAt: input.leaseExpiresAt,
+    });
+    return { acquired: true, run };
+  }
+
+  async renewImportLease(input: RenewImportLeaseInput): Promise<boolean> {
+    const entry = [...this.syncLeases.entries()].find(
+      ([, lease]) =>
+        lease.importRunId === input.importRunId &&
+        lease.ownerToken === input.ownerToken,
+    );
+
+    if (!entry) {
+      return false;
+    }
+
+    this.syncLeases.set(entry[0], {
+      ...entry[1],
+      heartbeatAt: input.heartbeatAt,
+      expiresAt: input.expiresAt,
+    });
+    return true;
+  }
+
+  async getImportRun(importRunId: CanonicalId): Promise<ImportRun | null> {
+    const run = this.importRuns.get(importRunId);
+    return run ? copy(run) : null;
   }
 
   async commitSeasonImport(
@@ -162,6 +236,7 @@ export class DummyDatabaseProvider implements DatabaseProvider {
 
     this.snapshots.set(snapshot.season.year, copy(snapshot));
     this.importRuns.set(succeededImport.id, succeededImport);
+    this.releaseLease(succeededImport.id);
     return copy(succeededImport);
   }
 
@@ -211,6 +286,7 @@ export class DummyDatabaseProvider implements DatabaseProvider {
     });
 
     this.importRuns.set(failedImport.id, failedImport);
+    this.releaseLease(failedImport.id);
     return copy(failedImport);
   }
 
@@ -226,6 +302,7 @@ export class DummyDatabaseProvider implements DatabaseProvider {
     });
 
     this.importRuns.set(unavailableImport.id, unavailableImport);
+    this.releaseLease(unavailableImport.id);
     return copy(unavailableImport);
   }
 
@@ -240,39 +317,50 @@ export class DummyDatabaseProvider implements DatabaseProvider {
   async listSeasonDatasetStatuses(
     seasonYear: number,
   ): Promise<SeasonDatasetStatus[]> {
-    const latestByDataset = new Map<
-      NonNullable<ImportRun["dataset"]>,
-      ImportRun
-    >();
-
-    for (const run of [...this.importRuns.values()].sort((left, right) =>
-      right.startedAt.localeCompare(left.startedAt),
-    )) {
-      const dataset = run.dataset ?? "core";
-
-      if (run.seasonYear === seasonYear && !latestByDataset.has(dataset)) {
-        latestByDataset.set(dataset, run);
-      }
-    }
+    const runs = [...this.importRuns.values()]
+      .filter((run) => run.seasonYear === seasonYear)
+      .sort((left, right) => right.startedAt.localeCompare(left.startedAt));
 
     return (
       ["core", "rosters", "transactions", "player_stats"] as const
     ).map((dataset) => {
-      const run = latestByDataset.get(dataset);
+      const datasetRuns = runs.filter(
+        (run) => (run.dataset ?? "core") === dataset,
+      );
+      const latestAttempt = datasetRuns[0] ?? null;
+      const lease = this.syncLeases.get(`${seasonYear}:${dataset}`);
+      const activeRun =
+        latestAttempt?.status === "running" &&
+        lease?.importRunId === latestAttempt.id &&
+        lease.expiresAt > new Date().toISOString()
+          ? latestAttempt
+          : null;
+      const latestSuccess =
+        datasetRuns.find((run) => run.status === "succeeded") ?? null;
+      const consecutiveFailureCount = datasetRuns.filter(
+        (run) =>
+          run.status === "failed" &&
+          (!latestSuccess || run.startedAt > latestSuccess.startedAt),
+      ).length;
 
-      return run
-        ? {
-            dataset,
-            status: run.status,
-            completedAt: run.completedAt,
-            message: run.errorMessage,
-          }
-        : {
-            dataset,
-            status: "not_imported" as const,
-            completedAt: null,
-            message: null,
-          };
+      return {
+        dataset,
+        activeRun: activeRun
+          ? { id: activeRun.id, startedAt: activeRun.startedAt }
+          : null,
+        lastSuccessfulStartedAt: latestSuccess?.startedAt ?? null,
+        latestAttempt: latestAttempt
+          ? {
+              id: latestAttempt.id,
+              trigger: latestAttempt.trigger ?? "legacy",
+              status: latestAttempt.status,
+              startedAt: latestAttempt.startedAt,
+              completedAt: latestAttempt.completedAt,
+              errorMessage: latestAttempt.errorMessage,
+            }
+          : null,
+        consecutiveFailureCount,
+      };
     });
   }
 
@@ -282,6 +370,31 @@ export class DummyDatabaseProvider implements DatabaseProvider {
 
   async hasSeasonImport(seasonYear: number): Promise<boolean> {
     return this.snapshots.has(seasonYear);
+  }
+
+  async getHighestActiveSeasonYear(): Promise<number | null> {
+    const years = [...this.snapshots.values()]
+      .filter((snapshot) => snapshot.season.isActive)
+      .map((snapshot) => snapshot.season.year);
+
+    return years.length > 0 ? Math.max(...years) : null;
+  }
+
+  async hasLiveNflGame(
+    seasonYear: number,
+    startsAfter: string,
+    startsBefore: string,
+  ): Promise<boolean> {
+    return (
+      this.playerStatsSnapshots
+        .get(seasonYear)
+        ?.games.some(
+          (game) =>
+            !game.completed &&
+            game.startsAt > startsAfter &&
+            game.startsAt <= startsBefore,
+        ) ?? false
+    );
   }
 
   async getSeasonImportSnapshot(
@@ -418,6 +531,28 @@ export class DummyDatabaseProvider implements DatabaseProvider {
     return importRun;
   }
 
+  private requireImportRun(importRunId: CanonicalId) {
+    const importRun = this.importRuns.get(importRunId);
+
+    if (!importRun) {
+      throw new SafeOperationalError(
+        `Import ${importRunId} was not found in dummy storage`,
+      );
+    }
+
+    return importRun;
+  }
+
+  private releaseLease(importRunId: CanonicalId) {
+    const entry = [...this.syncLeases.entries()].find(
+      ([, lease]) => lease.importRunId === importRunId,
+    );
+
+    if (entry) {
+      this.syncLeases.delete(entry[0]);
+    }
+  }
+
   private completeImport(
     importRunId: CanonicalId,
     completedAt: string,
@@ -430,6 +565,7 @@ export class DummyDatabaseProvider implements DatabaseProvider {
       errorMessage: null,
     });
     this.importRuns.set(succeededImport.id, succeededImport);
+    this.releaseLease(succeededImport.id);
     return succeededImport;
   }
 }

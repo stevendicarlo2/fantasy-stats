@@ -5,7 +5,8 @@ import { SafeOperationalError } from "@/application/errors";
 import { getWebRuntime } from "@/server/runtime/web-runtime";
 
 import { ImportForm } from "./import-form";
-import { DatasetRetryForm } from "./dataset-retry-form";
+import { RelativeTime } from "./relative-time";
+import { SeasonSyncControls } from "./season-sync-controls";
 
 const importDatasets = [
   ["core", "Core"],
@@ -85,11 +86,14 @@ export default async function Home() {
             <p className="panel-kicker">Data management</p>
             <h2>Sync a season</h2>
             <p>
-              New seasons are imported automatically. Existing seasons are
-              refreshed while preserving manual score adjustments and any
-              prior supplemental snapshot whose refresh fails.
+              Import a new season in the background, then use the controls
+              below for later refreshes. Manual score adjustments and prior
+              supplemental snapshots are preserved if a refresh fails.
             </p>
             <ImportForm
+              key={dashboard.importedSeasons
+                .map((season) => season.year)
+                .join(",")}
               years={dashboard.availableYears}
               importedYears={dashboard.importedSeasons.map(
                 (season) => season.year,
@@ -109,7 +113,8 @@ export default async function Home() {
                     <tr>
                       <th>Season</th>
                       <th>Teams</th>
-                      <th>Supplemental datasets</th>
+                      <th>Dataset status</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -129,31 +134,60 @@ export default async function Home() {
                                   candidate.dataset === dataset,
                               ) ?? {
                                 dataset,
-                                status: "not_imported" as const,
-                                completedAt: null,
-                                message: null,
+                                activeRun: null,
+                                lastSuccessfulStartedAt: null,
+                                latestAttempt: null,
+                                consecutiveFailureCount: 0,
                               };
+                              const latestFailure =
+                                status.latestAttempt &&
+                                (status.latestAttempt.status === "failed" ||
+                                  status.latestAttempt.status ===
+                                    "unavailable") &&
+                                (!status.lastSuccessfulStartedAt ||
+                                  status.latestAttempt.startedAt >
+                                    status.lastSuccessfulStartedAt)
+                                  ? status.latestAttempt
+                                  : null;
 
                               return (
                                 <div className="dataset-status" key={dataset}>
                                   <span>
-                                    {label}:{" "}
-                                    <strong className={`status ${status.status}`}>
-                                      {status.status.replace("_", " ")}
-                                    </strong>
+                                    <strong>{label}</strong>
                                   </span>
-                                  {dataset !== "core" &&
-                                  (status.status === "failed" ||
-                                    status.status === "not_imported") ? (
-                                    <DatasetRetryForm
-                                      dataset={dataset}
-                                      year={season.year}
-                                    />
+                                  {status.activeRun ? (
+                                    <span className="status running">
+                                      syncing
+                                    </span>
+                                  ) : null}
+                                  <span>
+                                    {status.lastSuccessfulStartedAt ? (
+                                      <>
+                                        Last synced{" "}
+                                        <RelativeTime
+                                          value={
+                                            status.lastSuccessfulStartedAt
+                                          }
+                                        />
+                                      </>
+                                    ) : (
+                                      "Never synced"
+                                    )}
+                                  </span>
+                                  {latestFailure ? (
+                                    <span
+                                      className={`status ${latestFailure.status}`}
+                                    >
+                                      {latestFailure.errorMessage}
+                                    </span>
                                   ) : null}
                                 </div>
                               );
                             })}
                           </div>
+                        </td>
+                        <td>
+                          <SeasonSyncControls year={season.year} />
                         </td>
                       </tr>
                     ))}
@@ -176,6 +210,7 @@ export default async function Home() {
                   <tr>
                     <th>Season</th>
                     <th>Operation</th>
+                    <th>Trigger</th>
                     <th>Dataset</th>
                     <th>Status</th>
                     <th>Started</th>
@@ -187,6 +222,7 @@ export default async function Home() {
                     <tr key={run.id}>
                       <td>{run.seasonYear}</td>
                       <td>{run.operation}</td>
+                      <td>{run.trigger ?? "legacy"}</td>
                       <td>{run.dataset ?? "core"}</td>
                       <td>
                         <span className={`status ${run.status}`}>

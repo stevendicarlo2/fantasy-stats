@@ -167,6 +167,7 @@ describe("createLocalMigrationRunner", () => {
       databaseUrl,
       migrationsDirectory: directory,
     });
+
     await runner.runMigrations();
     runner.close();
 

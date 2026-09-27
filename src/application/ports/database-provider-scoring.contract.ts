@@ -90,6 +90,7 @@ function createScoringSnapshot(): SeasonImportSnapshot {
       playoffTeamCount: 4,
       regularSeasonStartWeek: 1,
       regularSeasonEndWeek: 3,
+      isActive: true,
     },
     franchises: ids.franchises.map((id, index) => ({
       id,

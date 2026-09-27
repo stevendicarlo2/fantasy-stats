@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 
 import {
-  act,
   cleanup,
   fireEvent,
   render,
@@ -10,7 +9,10 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { runSeasonDatasetAction } from "./actions";
+import {
+  pollSeasonDatasetSync,
+  startSeasonDatasetSync,
+} from "./actions";
 import { ImportForm } from "./import-form";
 
 const refresh = vi.fn();
@@ -20,23 +22,12 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("./actions", () => ({
-  runSeasonDatasetAction: vi.fn(),
+  pollSeasonDatasetSync: vi.fn(),
+  startSeasonDatasetSync: vi.fn(),
 }));
 
-const runDataset = vi.mocked(runSeasonDatasetAction);
-
-function deferredResult() {
-  let resolve: (
-    value: Awaited<ReturnType<typeof runSeasonDatasetAction>>,
-  ) => void = () => {};
-  const promise = new Promise<
-    Awaited<ReturnType<typeof runSeasonDatasetAction>>
-  >((resolvePromise) => {
-    resolve = resolvePromise;
-  });
-
-  return { promise, resolve };
-}
+const startDataset = vi.mocked(startSeasonDatasetSync);
+const pollDataset = vi.mocked(pollSeasonDatasetSync);
 
 function datasetRow(
   view: ReturnType<typeof render>,
@@ -52,7 +43,8 @@ function datasetRow(
 afterEach(() => {
   cleanup();
   refresh.mockReset();
-  runDataset.mockReset();
+  startDataset.mockReset();
+  pollDataset.mockReset();
 });
 
 describe("ImportForm", () => {
@@ -73,14 +65,16 @@ describe("ImportForm", () => {
     ).toBeTruthy();
   });
 
-  it("syncs only selected datasets and reports progress sequentially", async () => {
-    const core = deferredResult();
-    const rosters = deferredResult();
-    runDataset
-      .mockReturnValueOnce(core.promise)
-      .mockReturnValueOnce(rosters.promise);
+  it("imports only selected datasets in dependency order", async () => {
+    startDataset.mockImplementation(async ({ dataset }) => ({
+      dataset,
+      runId: `${dataset}-run`,
+      status: "succeeded",
+      message: `${dataset} succeeded`,
+      pollAfterMs: null,
+    }));
     const view = render(
-      <ImportForm years={[2025]} importedYears={[2025]} />,
+      <ImportForm years={[2025]} importedYears={[]} />,
     );
 
     fireEvent.click(view.getByText("Datasets"));
@@ -100,37 +94,16 @@ describe("ImportForm", () => {
       }).closest("form")!,
     );
 
-    expect(
-      datasetRow(view, "Core season data").getByText("syncing"),
-    ).toBeTruthy();
-    expect(
-      datasetRow(view, "Weekly rosters and projections").getByText("waiting"),
-    ).toBeTruthy();
-    expect(runDataset).toHaveBeenCalledTimes(1);
-    expect(runDataset).toHaveBeenCalledWith({
+    await waitFor(() => expect(startDataset).toHaveBeenCalledTimes(2));
+    expect(startDataset).toHaveBeenNthCalledWith(1, {
       dataset: "core",
-      operation: "refresh",
+      operation: "import",
       year: 2025,
     });
-
-    await act(async () => {
-      core.resolve({
-        dataset: "core",
-        status: "succeeded",
-        message: "core succeeded",
-      });
-    });
-    await waitFor(() => expect(runDataset).toHaveBeenCalledTimes(2));
-    expect(
-      datasetRow(view, "Weekly rosters and projections").getByText("syncing"),
-    ).toBeTruthy();
-
-    await act(async () => {
-      rosters.resolve({
-        dataset: "rosters",
-        status: "succeeded",
-        message: "rosters succeeded",
-      });
+    expect(startDataset).toHaveBeenNthCalledWith(2, {
+      dataset: "rosters",
+      operation: "import",
+      year: 2025,
     });
     await waitFor(() =>
       expect(view.getByText("Season 2025 sync completed.")).toBeTruthy(),
@@ -138,37 +111,13 @@ describe("ImportForm", () => {
     expect(refresh).toHaveBeenCalled();
   });
 
-  it("allows core to be omitted for an existing season", async () => {
-    runDataset.mockResolvedValue({
-      dataset: "rosters",
-      status: "succeeded",
-      message: "rosters succeeded",
-    });
+  it("does not offer an already imported season", () => {
     const view = render(
       <ImportForm years={[2025]} importedYears={[2025]} />,
     );
-    const labelsToDeselect = [
-      "Core season data",
-      "Draft picks and transactions",
-      "NFL games and player statistics",
-    ];
 
-    fireEvent.click(view.getByText("Datasets"));
-    for (const label of labelsToDeselect) {
-      fireEvent.click(view.getByRole("checkbox", { name: label }));
-    }
-    expect(view.getByText("1 of 4 datasets")).toBeTruthy();
-    fireEvent.submit(
-      view.getByRole("button", {
-        name: "Sync selected datasets",
-      }).closest("form")!,
-    );
-
-    await waitFor(() => expect(runDataset).toHaveBeenCalledTimes(1));
-    expect(runDataset).toHaveBeenCalledWith({
-      dataset: "rosters",
-      operation: "refresh",
-      year: 2025,
-    });
+    expect(
+      view.getByText("Every configured season has been imported."),
+    ).toBeTruthy();
   });
 });

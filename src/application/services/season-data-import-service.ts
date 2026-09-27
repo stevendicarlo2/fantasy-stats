@@ -14,11 +14,23 @@ export interface SeasonDataImportResult {
 type CoreImportService = Pick<
   SeasonImportService,
   "importSeason" | "refreshSeason" | "syncSeason"
->;
+> &
+  Partial<
+    Pick<
+      SeasonImportService,
+      "executeStartedRun" | "prepareOperation" | "provider"
+    >
+  >;
 type SupplementalService = Pick<
   SupplementalImportService,
   "importRosters" | "importTransactions" | "importPlayerStats"
->;
+> &
+  Partial<
+    Pick<
+      SupplementalImportService,
+      "executeStartedRun" | "prepareDataset" | "providerForDataset"
+    >
+  >;
 
 export class SeasonDataImportService {
   constructor(
@@ -71,6 +83,54 @@ export class SeasonDataImportService {
 
   retryPlayerStats(year: number) {
     return this.supplemental.importPlayerStats(year);
+  }
+
+  providerForDataset(dataset: ImportDataset) {
+    const provider =
+      dataset === "core"
+        ? this.core.provider
+        : this.supplemental.providerForDataset?.(dataset);
+
+    if (!provider) {
+      throw new Error("Dataset import provider is unavailable");
+    }
+
+    return provider;
+  }
+
+  async prepareDataset(
+    year: number,
+    dataset: ImportDataset,
+    operation: ImportOperation,
+  ) {
+    if (dataset === "core") {
+      if (!this.core.prepareOperation) {
+        throw new Error("Core import preparation is unavailable");
+      }
+      await this.core.prepareOperation(operation, year);
+      return;
+    }
+
+    if (!this.supplemental.prepareDataset) {
+      throw new Error("Supplemental import preparation is unavailable");
+    }
+    await this.supplemental.prepareDataset(year);
+  }
+
+  executeStartedRun(run: ImportRun) {
+    const execute =
+      run.dataset === "core"
+        ? this.core.executeStartedRun
+        : this.supplemental.executeStartedRun;
+
+    if (!execute) {
+      throw new Error("Dataset import execution is unavailable");
+    }
+
+    return execute.call(
+      run.dataset === "core" ? this.core : this.supplemental,
+      run,
+    );
   }
 
   private async execute(

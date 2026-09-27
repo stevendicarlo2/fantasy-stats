@@ -21,6 +21,7 @@ function coreSnapshot(year = 2025): SeasonImportSnapshot {
       playoffTeamCount: 1,
       regularSeasonStartWeek: 1,
       regularSeasonEndWeek: 1,
+      isActive: true,
     },
     franchises: [],
     franchiseNames: [],

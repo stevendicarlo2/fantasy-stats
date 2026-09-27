@@ -35,6 +35,7 @@ function createSnapshot(): SeasonImportSnapshot {
       playoffTeamCount: 1,
       regularSeasonStartWeek: 1,
       regularSeasonEndWeek: 1,
+      isActive: true,
     },
     franchises: [
       { id: ids.home, leagueId: ids.league, ownerName: null },
@@ -77,6 +78,7 @@ function createRunningImportRun(): ImportRun {
     id: ids.importRun,
     provider: "synthetic",
     operation: "import",
+    trigger: "manual",
     dataset: "core",
     seasonYear: 2025,
     status: "running",
@@ -175,6 +177,7 @@ describe("SeasonImportService", () => {
       id: ids.importRun,
       provider: "synthetic",
       operation: "import",
+      trigger: "manual",
       dataset: "core",
       seasonYear: 2025,
       startedAt: "2026-08-23T22:00:00.000Z",

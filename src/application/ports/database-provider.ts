@@ -3,6 +3,7 @@ import type {
   FranchiseDisplayName,
   ImportOperation,
   ImportRun,
+  ImportTrigger,
   ImportDataset,
   IsoDateTime,
   MatchupPhase,
@@ -39,9 +40,28 @@ export interface StartImportRunInput {
   id: CanonicalId;
   provider: string;
   operation: ImportOperation;
+  trigger?: ImportTrigger;
   dataset?: ImportDataset;
   seasonYear: number;
   startedAt: IsoDateTime;
+}
+
+export interface AcquireImportRunInput extends StartImportRunInput {
+  ownerToken: string;
+  leaseExpiresAt: IsoDateTime;
+  abandonedAt: IsoDateTime;
+}
+
+export interface AcquireImportRunResult {
+  acquired: boolean;
+  run: ImportRun;
+}
+
+export interface RenewImportLeaseInput {
+  importRunId: CanonicalId;
+  ownerToken: string;
+  heartbeatAt: IsoDateTime;
+  expiresAt: IsoDateTime;
 }
 
 export interface CommitSeasonImportInput {
@@ -109,6 +129,11 @@ export interface DatabaseProvider {
   ): Promise<FranchiseDisplayName>;
 
   startImportRun(input: StartImportRunInput): Promise<ImportRun>;
+  acquireImportRun(
+    input: AcquireImportRunInput,
+  ): Promise<AcquireImportRunResult>;
+  renewImportLease(input: RenewImportLeaseInput): Promise<boolean>;
+  getImportRun(importRunId: CanonicalId): Promise<ImportRun | null>;
   commitSeasonImport(input: CommitSeasonImportInput): Promise<ImportRun>;
   commitRosterImport(input: CommitRosterImportInput): Promise<ImportRun>;
   commitTransactionImport(
@@ -125,6 +150,12 @@ export interface DatabaseProvider {
   listSeasonDatasetStatuses(
     seasonYear: number,
   ): Promise<SeasonDatasetStatus[]>;
+  getHighestActiveSeasonYear(): Promise<number | null>;
+  hasLiveNflGame(
+    seasonYear: number,
+    startsAfter: IsoDateTime,
+    startsBefore: IsoDateTime,
+  ): Promise<boolean>;
 
   listImportedSeasonYears(): Promise<number[]>;
   hasSeasonImport(seasonYear: number): Promise<boolean>;

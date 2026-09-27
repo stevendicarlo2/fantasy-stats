@@ -50,6 +50,7 @@ export const seasonSchema: z.ZodType<Season> = z
     playoffTeamCount: z.int().positive().nullable(),
     regularSeasonStartWeek: weekSchema,
     regularSeasonEndWeek: weekSchema,
+    isActive: z.boolean(),
   })
   .refine(
     (season) =>
@@ -157,6 +158,9 @@ export const importRunSchema: z.ZodType<ImportRun> = z
     id: canonicalIdSchema,
     provider: nonEmptyTextSchema,
     operation: z.enum(["import", "refresh"]),
+    trigger: z
+      .enum(["legacy", "manual", "automatic", "cli"])
+      .default("legacy"),
     dataset: z
       .enum(["core", "rosters", "transactions", "player_stats"])
       .default("core"),

@@ -41,6 +41,39 @@ a {
   align-items: center;
 }
 
+.dataset-status > :nth-child(n + 3) {
+  grid-column: 1 / -1;
+}
+
+.season-sync-controls,
+.dataset-refresh-buttons {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.data-sync-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #f2d18c;
+  font-size: 0.85rem;
+}
+
+.data-sync-spinner {
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: data-sync-spin 0.8s linear infinite;
+}
+
+@keyframes data-sync-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .dataset-retry-form {
   display: flex;
   align-items: center;

@@ -30,6 +30,7 @@ function createSnapshot(): SeasonImportSnapshot {
       playoffTeamCount: 1,
       regularSeasonStartWeek: 1,
       regularSeasonEndWeek: 1,
+      isActive: true,
     },
     franchises: [
       { id: ids.home, leagueId: ids.league, ownerName: null },
@@ -113,6 +114,7 @@ describe("DummyDatabaseProvider", () => {
       seasonYear: 2025,
       startedAt: "2026-08-23T22:00:00Z",
     });
+
     await provider.commitSeasonImport({
       importRunId: ids.importRun,
       snapshot: createSnapshot(),
@@ -142,6 +144,48 @@ describe("DummyDatabaseProvider", () => {
       franchiseId: ids.home,
       displayName: "Person One",
     });
+  });
+
+  it("reports a running dataset only while its lease is active", async () => {
+    const provider = new DummyDatabaseProvider();
+    const now = new Date();
+    await provider.acquireImportRun({
+      id: ids.importRun,
+      provider: "espn",
+      operation: "refresh",
+      trigger: "automatic",
+      dataset: "core",
+      seasonYear: 2025,
+      startedAt: now.toISOString(),
+      abandonedAt: now.toISOString(),
+      ownerToken: "owner-one",
+      leaseExpiresAt: new Date(now.getTime() + 5 * 60_000).toISOString(),
+    });
+
+    await expect(
+      provider.listSeasonDatasetStatuses(2025),
+    ).resolves.toContainEqual(
+      expect.objectContaining({
+        dataset: "core",
+        activeRun: expect.objectContaining({ id: ids.importRun }),
+      }),
+    );
+
+    await provider.renewImportLease({
+      importRunId: ids.importRun,
+      ownerToken: "owner-one",
+      heartbeatAt: "2000-01-01T00:00:00.000Z",
+      expiresAt: "2000-01-01T00:01:00.000Z",
+    });
+
+    await expect(
+      provider.listSeasonDatasetStatuses(2025),
+    ).resolves.toContainEqual(
+      expect.objectContaining({
+        dataset: "core",
+        activeRun: null,
+      }),
+    );
   });
 
   it("returns source mappings discovered by supplemental imports", async () => {

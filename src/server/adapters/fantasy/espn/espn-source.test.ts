@@ -64,6 +64,7 @@ function createLeaguePayload(year: number) {
       },
     },
     status: {
+      isActive: true,
       firstScoringPeriod: 1,
     },
   };

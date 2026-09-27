@@ -105,6 +105,7 @@ const espnLeagueSchema = z.object({
     }),
   }),
   status: z.object({
+    isActive: z.boolean(),
     firstScoringPeriod: z.int().positive(),
   }),
 });
@@ -786,6 +787,7 @@ function mapLeagueToSnapshot(
       regularSeasonStartWeek: league.status.firstScoringPeriod,
       regularSeasonEndWeek:
         league.settings.scheduleSettings.matchupPeriodCount,
+      isActive: league.status.isActive,
     },
     franchises,
     franchiseNames: league.teams.map((team) => ({
