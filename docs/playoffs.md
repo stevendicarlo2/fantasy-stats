@@ -58,3 +58,13 @@ bracket tiers:
 These phases are informational, not exhaustive filters: eliminated teams keep
 playing every remaining postseason week, and their scores stay in the
 database and remain queryable via the eliminated phase values when needed.
+
+## Unplayed matchups
+
+ESPN schedules every matchup period for the full season up front and reports
+a score of 0 for any period that has not started yet, indistinguishable from
+a genuine final score. The ESPN adapter tracks the league's current scoring
+period and omits score rows for any matchup period it has not reached, so an
+unplayed matchup has no rows in `imported_matchup_scores` at all rather than
+a misleading 0. Views and queries built on `imported_matchup_scores` use inner
+joins, so unplayed matchups are excluded automatically.

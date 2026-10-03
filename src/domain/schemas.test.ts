@@ -97,8 +97,16 @@ describe("seasonImportSnapshotSchema", () => {
     snapshot.scores.pop();
 
     expect(() => seasonImportSnapshotSchema.parse(snapshot)).toThrow(
-      "must have exactly one imported score for each franchise",
+      "must have either no imported scores (not yet played) or exactly " +
+        "one imported score for each franchise",
     );
+  });
+
+  it("accepts a matchup with no imported scores as not yet played", () => {
+    const snapshot = createSnapshot();
+    snapshot.scores = [];
+
+    expect(() => seasonImportSnapshotSchema.parse(snapshot)).not.toThrow();
   });
 
   it("rejects references to franchises outside the snapshot", () => {

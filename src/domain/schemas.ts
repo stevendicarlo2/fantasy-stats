@@ -459,22 +459,28 @@ export const seasonImportSnapshotSchema: z.ZodType<SeasonImportSnapshot> =
 
       snapshot.matchups.forEach((matchup, index) => {
         const matchupScores = scoresByMatchup.get(matchup.id);
-
-        for (const franchiseId of [
+        const participantIds = [
           matchup.homeFranchiseId,
           matchup.awayFranchiseId,
-        ]) {
-          if (franchiseId === null) {
-            continue;
-          }
+        ].filter((franchiseId): franchiseId is string => franchiseId !== null);
+        const scoreCounts = participantIds.map(
+          (franchiseId) => matchupScores?.get(franchiseId) ?? 0,
+        );
+        // A matchup that has not been played yet has no imported scores at
+        // all. One is only invalid once some, but not every, participant has
+        // been scored, or a participant has more than one score.
+        const playedCount = scoreCounts.filter((count) => count === 1).length;
+        const isPartiallyScored =
+          playedCount > 0 && playedCount < participantIds.length;
+        const hasDuplicateScore = scoreCounts.some((count) => count > 1);
 
-          if (matchupScores?.get(franchiseId) !== 1) {
-            addReferenceIssue(
-              context,
-              ["matchups", index],
-              "must have exactly one imported score for each franchise",
-            );
-          }
+        if (isPartiallyScored || hasDuplicateScore) {
+          addReferenceIssue(
+            context,
+            ["matchups", index],
+            "must have either no imported scores (not yet played) or " +
+              "exactly one imported score for each franchise",
+          );
         }
       });
 

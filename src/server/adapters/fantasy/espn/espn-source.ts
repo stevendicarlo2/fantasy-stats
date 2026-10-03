@@ -107,6 +107,7 @@ const espnLeagueSchema = z.object({
   status: z.object({
     isActive: z.boolean(),
     firstScoringPeriod: z.int().positive(),
+    latestScoringPeriod: z.int().positive().optional(),
   }),
 });
 
@@ -322,6 +323,25 @@ function roundMatchupSideScore(side: {
   totalPointsLive?: number;
 }) {
   return Math.round((side.totalPointsLive ?? side.totalPoints) * 100) / 100;
+}
+
+// ESPN schedules every matchup period for the full season up front and
+// reports a score of 0 for any period that has not started yet, which is
+// indistinguishable from a real final score. Treat a matchup period as
+// unplayed until the league has reached it, mirroring resolveRosterState's
+// final/provisional split, so no score rows are imported for it.
+function hasMatchupPeriodStarted(
+  matchupPeriodId: number,
+  league: EspnLeague,
+): boolean {
+  if (!league.status.isActive) {
+    return true;
+  }
+
+  const currentScoringPeriod =
+    league.status.latestScoringPeriod ?? league.status.firstScoringPeriod;
+
+  return matchupPeriodId <= currentScoringPeriod;
 }
 
 function buildEspnUrl(leagueId: number, year: number) {
@@ -751,6 +771,10 @@ function mapLeagueToSnapshot(
     ]),
   );
   const scores = league.schedule.flatMap((matchup) => {
+    if (!hasMatchupPeriodStarted(matchup.matchupPeriodId, league)) {
+      return [];
+    }
+
     const matchupId = matchupIdByProviderId.get(matchup.id)!;
     const homeFranchiseId = franchiseIdByTeam.get(matchup.home.teamId)!;
     const matchupScores = [

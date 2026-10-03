@@ -26,6 +26,13 @@ The initial application supports one league, so a season year is unique across
 the database. Franchise names accumulate as known names rather than being
 deleted during a refresh.
 
+A matchup for a scoring period the league has not reached yet has no rows in
+`imported_matchup_scores` at all; the ESPN adapter omits scores for matchup
+periods it has not started rather than importing the provider's placeholder
+zero (see docs/playoffs.md). Views built on `imported_matchup_scores` use an
+inner join, so unplayed matchups are excluded automatically rather than
+appearing as zero scores.
+
 Migration `0008_matchup_roster_data.sql` adds:
 
 | Table | Purpose |

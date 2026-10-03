@@ -260,6 +260,9 @@ describe("EspnFantasySource", () => {
 
   it("maps postseason playoff, consolation, and playoff-eliminated byes", async () => {
     const payload = createLeaguePayload(2025);
+    // These postseason weeks are already final, mirroring an import of a
+    // completed season.
+    payload.status.isActive = false;
     payload.teams.push(
       {
         id: 3,
@@ -329,8 +332,45 @@ describe("EspnFantasySource", () => {
     ).toHaveLength(4);
   });
 
+  it("omits scores for matchup periods the league has not reached yet", async () => {
+    const payload = createLeaguePayload(2026);
+    payload.settings.scheduleSettings.matchupPeriodCount = 2;
+    payload.status.firstScoringPeriod = 1;
+    (payload.status as { latestScoringPeriod?: number }).latestScoringPeriod = 1;
+    payload.schedule.push({
+      id: 7,
+      matchupPeriodId: 2,
+      home: { teamId: 1, totalPoints: 0 },
+      away: { teamId: 2, totalPoints: 0 },
+    } as unknown as (typeof payload.schedule)[number]);
+    const source = createSource(payload);
+
+    const snapshot = await source.fetchSeason({
+      year: 2026,
+      knownMappings: [],
+    });
+
+    const futureMatchup = snapshot.matchups.find(
+      (matchup) => matchup.week === 2,
+    );
+
+    expect(futureMatchup).toBeDefined();
+    expect(
+      snapshot.scores.filter(
+        (score) => score.matchupId === futureMatchup?.id,
+      ),
+    ).toHaveLength(0);
+    expect(
+      snapshot.scores.filter((score) => score.matchupId !== futureMatchup?.id)
+        .length,
+    ).toBe(2);
+  });
+
   it("marks a franchise's later consolation games as eliminated after its first consolation loss", async () => {
     const payload = createLeaguePayload(2025);
+    // These postseason weeks are already final, mirroring an import of a
+    // completed season.
+    payload.status.isActive = false;
     payload.teams.push(
       {
         id: 3,
