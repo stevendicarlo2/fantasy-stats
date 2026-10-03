@@ -32,6 +32,7 @@ function createHarness(
     live?: boolean;
     statuses?: SeasonDatasetStatus[][];
     acquired?: boolean;
+    isAutomaticSyncEnabled?: boolean;
   } = {},
 ) {
   const runningRun = {
@@ -79,6 +80,7 @@ function createHarness(
   const coordinator = new DataSyncCoordinator({
     database,
     importService,
+    isAutomaticSyncEnabled: overrides.isAutomaticSyncEnabled ?? true,
     now: () => now,
     createId: vi
       .fn()
@@ -90,10 +92,35 @@ function createHarness(
     acquireImportRun,
     coordinator,
     executeStartedRun,
+    getHighestActiveSeasonYear: database.getHighestActiveSeasonYear,
+    hasLiveNflGame: database.hasLiveNflGame,
+    listSeasonDatasetStatuses,
   };
 }
 
 describe("DataSyncCoordinator", () => {
+  it.each(["season", "matchup", "adjustments"] as const)(
+    "does not observe or poll the %s page when the feature is disabled",
+    async (view) => {
+      const harness = createHarness({
+        isAutomaticSyncEnabled: false,
+        live: true,
+      });
+
+      await expect(
+        harness.coordinator.observeView(2026, view),
+      ).resolves.toEqual({
+        isSyncing: false,
+        revision: "",
+        pollAfterMs: null,
+      });
+      expect(harness.getHighestActiveSeasonYear).not.toHaveBeenCalled();
+      expect(harness.hasLiveNflGame).not.toHaveBeenCalled();
+      expect(harness.listSeasonDatasetStatuses).not.toHaveBeenCalled();
+      expect(harness.acquireImportRun).not.toHaveBeenCalled();
+    },
+  );
+
   it("does not automatically sync an inactive season", async () => {
     const harness = createHarness({ activeSeasonYear: 2025 });
 
@@ -233,7 +260,10 @@ describe("DataSyncCoordinator", () => {
   });
 
   it("joins an existing database-global run without executing twice", async () => {
-    const harness = createHarness({ acquired: false });
+    const harness = createHarness({
+      acquired: false,
+      isAutomaticSyncEnabled: false,
+    });
 
     await expect(
       harness.coordinator.requestDataset({
@@ -244,5 +274,10 @@ describe("DataSyncCoordinator", () => {
       }),
     ).resolves.toMatchObject({ started: false });
     expect(harness.executeStartedRun).not.toHaveBeenCalled();
+    await expect(
+      harness.coordinator.getRun(
+        "20000000-0000-4000-8000-000000000001",
+      ),
+    ).resolves.toMatchObject({ status: "running" });
   });
 });

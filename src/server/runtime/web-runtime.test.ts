@@ -47,6 +47,9 @@ describe("createWebRuntime", () => {
     });
 
     expect(runtime.storage.kind).toBe("local");
+    expect(runtime.featureFlags).toEqual({
+      isAutomaticDataSyncEnabled: false,
+    });
     await expect(runtime.storage.database.listImportRuns()).resolves.toEqual(
       [],
     );

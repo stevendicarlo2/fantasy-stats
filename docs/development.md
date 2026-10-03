@@ -24,6 +24,7 @@ file.
 | --- | --- |
 | `FANTASY_STATS_STORAGE` | `local` (default), `dummy`, or `turso` provider |
 | `FANTASY_STATS_LOCAL_DATABASE_FILE` | Local libSQL file path |
+| `FANTASY_STATS_FEATURE_FLAGS` | JSON object containing feature flag booleans |
 | `TURSO_DATABASE_URL` | Turso/libSQL database URL |
 | `TURSO_AUTH_TOKEN` | Turso authentication token |
 | `ESPN_LEAGUE_ID` | Numeric ESPN fantasy league identifier |
@@ -36,6 +37,20 @@ ESPN credentials are validated separately when an import or refresh requests
 them. This keeps unrelated development and production builds usable before
 either integration is configured while still producing explicit setup errors
 at the external boundary.
+
+Feature flags are declared in the typed registry at
+`src/feature-flags/definitions.ts`. Every name follows `is___Enabled` and
+declares an explicit default and description. Configure overrides together:
+
+```text
+FANTASY_STATS_FEATURE_FLAGS={"isAutomaticDataSyncEnabled":true}
+```
+
+Malformed JSON, unknown flags, and non-boolean values emit sanitized server
+warnings and fall back to registry defaults. Resolved values are available to
+server code through `getFeatureFlags()` and globally to client components
+through `useFeatureFlags()`. Restart the application after changing
+`.env.local`.
 
 Do not add real credentials or league data to `.env.example`, tests, fixtures,
 logs, or documentation.

@@ -10,6 +10,18 @@ remain pure: they read persisted application-owned models without knowing
 about freshness, ESPN, leases, or client polling. `SeasonDataQueryService`
 combines those reads with coordinator observation for web data pages.
 
+Automatic synchronization is disabled by default. Enable it server-side with:
+
+```text
+FANTASY_STATS_FEATURE_FLAGS={"isAutomaticDataSyncEnabled":true}
+```
+
+Restart the application after changing the flag. When disabled, data pages
+remain read-only: they do not evaluate live-game state, start automatic work,
+query synchronization status, or schedule synchronization polling. Dashboard
+and CLI imports and refreshes remain available, and the dashboard continues
+polling runs that the user starts explicitly.
+
 ## Dataset keys
 
 Freshness, leases, failures, and active work are tracked independently for each

@@ -13,7 +13,7 @@ const globalForWebRuntime = globalThis as typeof globalThis & {
   fantasyStatsWebRuntime?: Promise<WebRuntime>;
 };
 
-const WEB_RUNTIME_CACHE_VERSION = 13;
+const WEB_RUNTIME_CACHE_VERSION = 14;
 
 export function getWebRuntime() {
   const cachedRuntime = globalForWebRuntime.fantasyStatsWebRuntimeCache;

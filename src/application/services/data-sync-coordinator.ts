@@ -63,6 +63,7 @@ type ImportService = Pick<
 export interface DataSyncCoordinatorOptions {
   database: SyncDatabase;
   importService: ImportService;
+  isAutomaticSyncEnabled?: boolean;
   now?: () => Date;
   createId?: () => string;
   setIntervalImplementation?: typeof setInterval;
@@ -147,6 +148,7 @@ function automaticRetryAfter(
 }
 
 export class DataSyncCoordinator {
+  private readonly isAutomaticSyncEnabled: boolean;
   private readonly now: () => Date;
   private readonly createId: () => string;
   private readonly setIntervalImplementation: typeof setInterval;
@@ -155,6 +157,8 @@ export class DataSyncCoordinator {
   private readonly executions = new Map<string, Promise<void>>();
 
   constructor(private readonly options: DataSyncCoordinatorOptions) {
+    this.isAutomaticSyncEnabled =
+      options.isAutomaticSyncEnabled ?? false;
     this.now = options.now ?? (() => new Date());
     this.createId = options.createId ?? randomUUID;
     this.setIntervalImplementation =
@@ -212,6 +216,14 @@ export class DataSyncCoordinator {
     year: number,
     view: DataSyncView,
   ): Promise<DataSyncViewState> {
+    if (!this.isAutomaticSyncEnabled) {
+      return {
+        isSyncing: false,
+        revision: "",
+        pollAfterMs: null,
+      };
+    }
+
     const now = this.now();
     const activeSeasonYear =
       await this.options.database.getHighestActiveSeasonYear();

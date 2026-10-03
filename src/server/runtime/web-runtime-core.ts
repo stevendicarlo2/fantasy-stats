@@ -17,6 +17,8 @@ import {
   parseDatabaseEnvironment,
   parseEspnEnvironment,
 } from "@/server/config/environment-schema";
+import { getFeatureFlags } from "@/server/config/feature-flags";
+import type { FeatureFlags } from "@/feature-flags/definitions";
 import {
   createSelectedStorage,
   type SelectedStorage,
@@ -27,6 +29,7 @@ type EnvironmentValues = Readonly<Record<string, string | undefined>>;
 
 export interface WebRuntime {
   storage: SelectedStorage;
+  featureFlags: FeatureFlags;
   earliestSeason: number;
   latestSeason: number;
   importService: SeasonImportService;
@@ -84,6 +87,7 @@ export async function createWebRuntime(
   environment: EnvironmentValues,
 ): Promise<WebRuntime> {
   const espnEnvironment = parseEspnEnvironment(environment);
+  const featureFlags = getFeatureFlags(environment);
   const storage = await createSelectedStorage(
     getStorageSelection(environment),
   );
@@ -119,6 +123,8 @@ export async function createWebRuntime(
   const dataSyncCoordinator = new DataSyncCoordinator({
     database: storage.database,
     importService: seasonDataImportService,
+    isAutomaticSyncEnabled:
+      featureFlags.isAutomaticDataSyncEnabled,
   });
   const seasonStatsService = new SeasonStatsService(storage.database);
   const matchupRosterService = new MatchupRosterService(storage.database);
@@ -128,6 +134,7 @@ export async function createWebRuntime(
 
   return {
     storage,
+    featureFlags,
     earliestSeason: espnEnvironment.ESPN_EARLIEST_SEASON,
     // NFL seasons start in September, so the current calendar year's season
     // is already importable well before the year ends.
