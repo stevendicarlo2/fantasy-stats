@@ -15,7 +15,12 @@ the generated query through the existing read-only console service and
 database transaction.
 
 Generation starts a fresh non-interactive `copilot` process with a fixed schema
-and scoring rules in its prompt. The process receives read-only access to the
+and scoring rules in its prompt. Unless the user requests other seasons, the
+prompt restricts results to season_year 2019 or later, and it always excludes
+scores from franchises already eliminated from the postseason (matchups.phase
+`playoff_eliminated` or `consolation_eliminated`; see docs/playoffs.md).
+Postseason itself covers the playoff, consolation, and bye weeks. The process
+receives read-only access to the
 repository and is directed to the SQL console, storage, analytics, playoff,
 libSQL persistence, scoring-view, and migration documentation before writing
 the query. Custom instructions, built-in MCP servers, remote access, temporary
